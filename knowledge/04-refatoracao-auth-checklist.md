@@ -10,8 +10,8 @@ Refatorar todo o fluxo de autenticação e usuário para seguir o padrão de Cle
 | ✅      | Criar VO de Email                              | 1ea73db                                        |                            |
 | ✅      | Criar VO de Password                           | 4c1846e                                        |                            |
 | ✅      | Criar VO de Username                           | f4bcc65                                        |                            |
-| ⬜      | Criar VO de UserId/UUID                        |                                                |                            |
-| ⬜      | Criar VO de Token                              |                                                |                            |
+| ✅      | Criar VO de UserId/UUID                        | 6a12b73                                        |                            |
+| ✅      | Criar VO de Token                              | 18189e2                                        |                            |
 | ⬜      | Criar VO de Timestamp                          |                                                |                            |
 | ⬜      | Refatorar entidades de usuário para usar VOs    |                                                |                            |
 | ⬜      | Refatorar casos de uso de auth para usar VOs    |                                                |                            |
