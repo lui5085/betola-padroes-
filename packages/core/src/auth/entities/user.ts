@@ -16,17 +16,22 @@ export class User {
   passwordResetExpires?: Timestamp | null;
 
   constructor(
-    props: Omit<User, 'id' | 'createdAt' | 'updatedAt'>,
+    params: {
+      email: Email;
+      password: Password;
+      passwordResetToken?: Token | null;
+      passwordResetExpires?: Timestamp | null;
+    },
     id?: UserId,
     createdAt?: Timestamp,
     updatedAt?: Timestamp,
   ) {
     this.id = id ?? new UserId(randomUUID());
-    this.email = props.email;
-    this.password = props.password;
+    this.email = params.email;
+    this.password = params.password;
     this.createdAt = createdAt ?? new Timestamp(new Date());
     this.updatedAt = updatedAt ?? new Timestamp(new Date());
-    this.passwordResetToken = props.passwordResetToken;
-    this.passwordResetExpires = props.passwordResetExpires;
+    this.passwordResetToken = params.passwordResetToken;
+    this.passwordResetExpires = params.passwordResetExpires;
   }
 } 

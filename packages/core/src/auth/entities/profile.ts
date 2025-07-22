@@ -14,17 +14,23 @@ export class Profile {
   updatedAt: Timestamp;
 
   constructor(
-    props: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>,
+    params: {
+      userId: UserId;
+      username: Username;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    },
     id?: UserId,
     createdAt?: Timestamp,
     updatedAt?: Timestamp,
   ) {
     this.id = id ?? new UserId(randomUUID());
-    this.userId = props.userId;
-    this.username = props.username;
-    this.firstName = props.firstName ?? null;
-    this.lastName = props.lastName ?? null;
-    this.avatarUrl = props.avatarUrl ?? null;
+    this.userId = params.userId;
+    this.username = params.username;
+    this.firstName = params.firstName;
+    this.lastName = params.lastName;
+    this.avatarUrl = params.avatarUrl;
     this.createdAt = createdAt ?? new Timestamp(new Date());
     this.updatedAt = updatedAt ?? new Timestamp(new Date());
   }

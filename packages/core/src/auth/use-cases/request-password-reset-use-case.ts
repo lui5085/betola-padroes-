@@ -2,6 +2,9 @@ import { IUsersRepository } from '../repositories/users-repository';
 import { UserNotFoundError } from './errors/user-not-found-error';
 import { randomBytes } from 'crypto';
 import { IEmailSender } from '../services/email-sender';
+import { Email } from '../../../shared/types/email';
+import { Token } from '../../../shared/types/token';
+import { Timestamp } from '../../../shared/types/timestamp';
 
 interface RequestPasswordResetUseCaseRequest {
   email: string;
@@ -14,7 +17,8 @@ export class RequestPasswordResetUseCase {
   ) {}
 
   async execute({ email }: RequestPasswordResetUseCaseRequest): Promise<void> {
-    const user = await this.usersRepository.findByEmail(email);
+    const emailVO = new Email(email);
+    const user = await this.usersRepository.findByEmail(emailVO);
 
     if (!user) {
       throw new UserNotFoundError();
@@ -24,15 +28,15 @@ export class RequestPasswordResetUseCase {
     const now = new Date();
     const expires = new Date(now.getTime() + 3600 * 1000); 
 
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = expires;
+    user.passwordResetToken = new Token(resetToken);
+    user.passwordResetExpires = new Timestamp(expires);
 
     await this.usersRepository.save(user);
 
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
 
     await this.emailSender.send(
-      user.email,
+      user.email.value,
       'Recuperação de Senha - Betola',
       `
         <h1>Recuperação de Senha</h1>

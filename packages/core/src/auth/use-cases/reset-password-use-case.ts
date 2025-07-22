@@ -1,6 +1,9 @@
 import { IUsersRepository } from '../repositories/users-repository';
 import { IHasher } from '../services/hasher';
 import { InvalidResetTokenError } from './errors/invalid-reset-token-error';
+import { Token } from '../../../shared/types/token';
+import { Timestamp } from '../../../shared/types/timestamp';
+import { Password } from '../../../shared/types/password';
 
 interface ResetPasswordUseCaseRequest {
   token: string;
@@ -17,20 +20,20 @@ export class ResetPasswordUseCase {
     token,
     newPassword,
   }: ResetPasswordUseCaseRequest): Promise<void> {
-    const user = await this.usersRepository.findByPasswordResetToken(token);
+    const tokenVO = new Token(token);
+    const user = await this.usersRepository.findByPasswordResetToken(tokenVO);
 
     if (!user || !user.passwordResetExpires) {
       throw new InvalidResetTokenError();
     }
 
-    const now = new Date();
-    if (now > user.passwordResetExpires) {
+    const now = new Timestamp(new Date());
+    if (now.value.getTime() > user.passwordResetExpires.value.getTime()) {
       throw new InvalidResetTokenError();
     }
 
     const hashedPassword = await this.hasher.hash(newPassword);
-
-    user.password = hashedPassword;
+    user.password = new Password(hashedPassword);
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
 
