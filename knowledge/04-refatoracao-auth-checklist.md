@@ -12,7 +12,7 @@ Refatorar todo o fluxo de autenticação e usuário para seguir o padrão de Cle
 | ✅      | Criar VO de Username                           | f4bcc65                                        |                            |
 | ✅      | Criar VO de UserId/UUID                        | 6a12b73                                        |                            |
 | ✅      | Criar VO de Token                              | 18189e2                                        |                            |
-| ✅      | Criar VO de Timestamp                          | (commit junto com feat/core)                      |                            |
+| ✅      | Criar VO de Timestamp                          | 9d23215                                        |                            |
 | ⬜      | Refatorar entidades de usuário para usar VOs    |                                                |                            |
 | ⬜      | Refatorar casos de uso de auth para usar VOs    |                                                |                            |
 | ⬜      | Refatorar repositórios para aceitar VOs         |                                                |                            |
