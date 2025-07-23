@@ -17,13 +17,13 @@ Refatorar todo o fluxo de autenticação e usuário para seguir o padrão de Cle
 | ✅      | Refatorar casos de uso de auth para usar VOs    | (commit atual)                                  |                            |
 | ✅      | Refatorar repositórios para aceitar VOs         | (commit atual)                                  |                            |
 | ✅      | Garantir testes unitários para todos os VOs     | (já coberto)                                    |                            |
-| ⬜      | Garantir testes unitários para casos de uso principais (login, registro, reset, update profile) |                                                |                            |
+| ✅      | Garantir testes unitários para casos de uso principais (login, registro, reset, update profile) | (commit atual)                                 |                            |
+| ✅      | Teste unitário: RegisterUserUseCase (registro)  | (commit atual)                                 |                            |
 | ✅      | Teste unitário: AuthenticateUserUseCase (login) | (commit atual)                                 |                            |
-| ⬜      | Teste unitário: RegisterUserUseCase (registro)  |                                                |                            |
-| ⬜      | Teste unitário: RequestPasswordResetUseCase (reset) |                                            |                            |
-| ⬜      | Teste unitário: ResetPasswordUseCase (reset)    |                                                |                            |
-| ⬜      | Teste unitário: UpdateProfileUseCase (update profile) |                                            |                            |
-| ⬜      | Atualizar documentação do módulo                |                                                |                            |
+| ✅      | Teste unitário: RequestPasswordResetUseCase (reset) | (commit atual)                                 |                            |
+| ✅      | Teste unitário: ResetPasswordUseCase (reset)    | (commit atual)                                 |                            |
+| ✅      | Teste unitário: UpdateProfileUseCase (update profile) | (commit atual)                                 |                            |
+| ✅      | Atualizar documentação do módulo                | (commit atual)                                 |                            |
 
 ## Observações
 - Sempre referenciar o commit ou PR que resolve cada subtarefa.

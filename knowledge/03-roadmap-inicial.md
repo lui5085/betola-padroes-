@@ -26,3 +26,5 @@
 
 > **Dica:** cada tarefa ==> commit/pull‑request separado.
 
+- O módulo de usuário/autenticação já está refatorado e documentado em `knowledge/05-auth-modulo.md`.
+

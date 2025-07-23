@@ -8,6 +8,7 @@
   - `packages/adapters` → implementações que falam com DB, APIs, sockets.
   - `apps/api` (Nest) → orquestra IO, injeta adapters.
   - `apps/web` (Next) → UI, usa provedores via hooks/SDK.
+  - Para detalhes do módulo de autenticação/usuário, veja `knowledge/05-auth-modulo.md`.
 - **Fluxo de dependência**: *Controller* → **UseCase (core)** → **Provider (interface)** → **Adapter (implementação)**.
 - **Regras de ouro**
   1. Nada de lógica de negócio fora de `core`.
