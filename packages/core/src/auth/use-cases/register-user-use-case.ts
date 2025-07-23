@@ -1,3 +1,8 @@
+import { Email } from '../../../shared/types/email';
+import { Password } from '../../../shared/types/password';
+import { Username } from '../../../shared/types/username';
+import { UserId } from '../../../shared/types/user-id';
+import { Timestamp } from '../../../shared/types/timestamp';
 import { User } from '../entities/user';
 import { IUsersRepository } from '../repositories/users-repository';
 import { IHasher } from '../services/hasher';
@@ -33,31 +38,35 @@ export class RegisterUserUseCase {
     firstName,
     lastName,
   }: RegisterUserUseCaseRequest): Promise<RegisterUserUseCaseResponse> {
-    const emailAlreadyExists = await this.usersRepository.findByEmail(email);
+    const emailVO = new Email(email);
+    const passwordVO = new Password(password);
+    const usernameVO = new Username(username);
 
+    const emailAlreadyExists = await this.usersRepository.findByEmail(emailVO);
     if (emailAlreadyExists) {
       throw new EmailAlreadyExistsError();
     }
 
-    const usernameAlreadyExists =
-      await this.profilesRepository.findByUsername(username);
-
+    const usernameAlreadyExists = await this.profilesRepository.findByUsername(usernameVO);
     if (usernameAlreadyExists) {
       throw new UsernameAlreadyExistsError();
     }
 
+    // Supondo que o hasher retorna string, mas o VO Password espera string "pura" (não hash),
+    // então criamos o Password VO com o hash
     const hashedPassword = await this.hasher.hash(password);
+    const hashedPasswordVO = new Password(hashedPassword);
 
     const user = new User({
-      email,
-      password: hashedPassword,
+      email: emailVO,
+      password: hashedPasswordVO,
     });
 
     await this.usersRepository.create(user);
 
     const profile = new Profile({
       userId: user.id,
-      username,
+      username: usernameVO,
       firstName: firstName ?? null,
       lastName: lastName ?? null,
       avatarUrl: null,

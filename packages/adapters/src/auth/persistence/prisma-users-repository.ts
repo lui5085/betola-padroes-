@@ -1,24 +1,31 @@
 import { IUsersRepository, User } from '@betola/core';
 import { PrismaClient } from '@prisma/client';
 import { prisma } from './prisma';
+import { UserId } from '@betola/core/shared/types/user-id';
+import { Email } from '@betola/core/shared/types/email';
+import { Password } from '@betola/core/shared/types/password';
+import { Token } from '@betola/core/shared/types/token';
+import { Timestamp } from '@betola/core/shared/types/timestamp';
 
 export class PrismaUsersRepository implements IUsersRepository {
   async create(user: User): Promise<void> {
     await prisma.user.create({
       data: {
-        id: user.id,
-        email: user.email,
-        password: user.password,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        id: user.id.value,
+        email: user.email.value,
+        password: user.password.value,
+        createdAt: user.createdAt.value,
+        updatedAt: user.updatedAt.value,
+        passwordResetToken: user.passwordResetToken?.value ?? null,
+        passwordResetExpires: user.passwordResetExpires?.value ?? null,
       },
     });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: Email): Promise<User | null> {
     const user = await prisma.user.findUnique({
       where: {
-        email,
+        email: email.value,
       },
     });
 
@@ -28,17 +35,21 @@ export class PrismaUsersRepository implements IUsersRepository {
 
     return new User(
       {
-        email: user.email,
-        password: user.password,
+        email: new Email(user.email),
+        password: new Password(user.password),
+        passwordResetToken: user.passwordResetToken ? new Token(user.passwordResetToken) : null,
+        passwordResetExpires: user.passwordResetExpires ? new Timestamp(user.passwordResetExpires) : null,
       },
-      user.id,
+      new UserId(user.id),
+      new Timestamp(user.createdAt),
+      new Timestamp(user.updatedAt),
     );
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: UserId): Promise<User | null> {
     const user = await prisma.user.findUnique({
       where: {
-        id,
+        id: id.value,
       },
     });
 
@@ -48,34 +59,36 @@ export class PrismaUsersRepository implements IUsersRepository {
 
     return new User(
       {
-        email: user.email,
-        password: user.password,
-        passwordResetToken: user.passwordResetToken,
-        passwordResetExpires: user.passwordResetExpires,
+        email: new Email(user.email),
+        password: new Password(user.password),
+        passwordResetToken: user.passwordResetToken ? new Token(user.passwordResetToken) : null,
+        passwordResetExpires: user.passwordResetExpires ? new Timestamp(user.passwordResetExpires) : null,
       },
-      user.id,
+      new UserId(user.id),
+      new Timestamp(user.createdAt),
+      new Timestamp(user.updatedAt),
     );
   }
 
   async save(user: User): Promise<void> {
     await prisma.user.update({
       where: {
-        id: user.id,
+        id: user.id.value,
       },
       data: {
-        email: user.email,
-        password: user.password,
-        passwordResetToken: user.passwordResetToken,
-        passwordResetExpires: user.passwordResetExpires,
+        email: user.email.value,
+        password: user.password.value,
+        passwordResetToken: user.passwordResetToken?.value ?? null,
+        passwordResetExpires: user.passwordResetExpires?.value ?? null,
         updatedAt: new Date(),
       },
     });
   }
 
-  async findByPasswordResetToken(token: string): Promise<User | null> {
+  async findByPasswordResetToken(token: Token): Promise<User | null> {
     const user = await prisma.user.findFirst({
       where: {
-        passwordResetToken: token,
+        passwordResetToken: token.value,
       },
     });
 
@@ -85,12 +98,14 @@ export class PrismaUsersRepository implements IUsersRepository {
 
     return new User(
       {
-        email: user.email,
-        password: user.password,
-        passwordResetToken: user.passwordResetToken,
-        passwordResetExpires: user.passwordResetExpires,
+        email: new Email(user.email),
+        password: new Password(user.password),
+        passwordResetToken: user.passwordResetToken ? new Token(user.passwordResetToken) : null,
+        passwordResetExpires: user.passwordResetExpires ? new Timestamp(user.passwordResetExpires) : null,
       },
-      user.id,
+      new UserId(user.id),
+      new Timestamp(user.createdAt),
+      new Timestamp(user.updatedAt),
     );
   }
 } 

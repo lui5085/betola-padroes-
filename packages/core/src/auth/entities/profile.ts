@@ -1,26 +1,37 @@
+import { UserId } from '../../../shared/types/user-id';
+import { Username } from '../../../shared/types/username';
+import { Timestamp } from '../../../shared/types/timestamp';
 import { randomUUID } from 'crypto';
 
 export class Profile {
-  id: string;
-  userId: string;
-  username: string;
+  id: UserId;
+  userId: UserId;
+  username: Username;
   firstName: string | null;
   lastName: string | null;
   avatarUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 
   constructor(
-    props: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'>,
-    id?: string,
+    params: {
+      userId: UserId;
+      username: Username;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    },
+    id?: UserId,
+    createdAt?: Timestamp,
+    updatedAt?: Timestamp,
   ) {
-    this.id = id ?? randomUUID();
-    this.userId = props.userId;
-    this.username = props.username;
-    this.firstName = props.firstName ?? null;
-    this.lastName = props.lastName ?? null;
-    this.avatarUrl = props.avatarUrl ?? null;
-    this.createdAt = new Date();
-    this.updatedAt = new Date();
+    this.id = id ?? new UserId(randomUUID());
+    this.userId = params.userId;
+    this.username = params.username;
+    this.firstName = params.firstName;
+    this.lastName = params.lastName;
+    this.avatarUrl = params.avatarUrl;
+    this.createdAt = createdAt ?? new Timestamp(new Date());
+    this.updatedAt = updatedAt ?? new Timestamp(new Date());
   }
 } 

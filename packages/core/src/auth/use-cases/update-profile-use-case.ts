@@ -2,6 +2,8 @@ import { IProfilesRepository } from '../repositories/profiles-repository';
 import { Profile } from '../entities/profile';
 import { UserNotFoundError } from './errors/user-not-found-error';
 import { UsernameAlreadyExistsError } from './errors/username-already-exists-error';
+import { UserId } from '../../../shared/types/user-id';
+import { Username } from '../../../shared/types/username';
 
 interface UpdateProfileUseCaseRequest {
   userId: string;
@@ -25,18 +27,20 @@ export class UpdateProfileUseCase {
     lastName,
     avatarUrl,
   }: UpdateProfileUseCaseRequest): Promise<UpdateProfileUseCaseResponse> {
-    const profile = await this.profilesRepository.findByUserId(userId);
+    const userIdVO = new UserId(userId);
+    const profile = await this.profilesRepository.findByUserId(userIdVO);
 
     if (!profile) {
       throw new UserNotFoundError();
     }
 
-    if (username && username !== profile.username) {
-      const existing = await this.profilesRepository.findByUsername(username);
+    if (username && !profile.username.equals(new Username(username))) {
+      const usernameVO = new Username(username);
+      const existing = await this.profilesRepository.findByUsername(usernameVO);
       if (existing) {
         throw new UsernameAlreadyExistsError();
       }
-      profile.username = username;
+      profile.username = usernameVO;
     }
 
     if (firstName !== undefined) profile.firstName = firstName;
