@@ -1,13 +1,63 @@
+// apps/web/src/app/(auth)/login/page.tsx
 'use client'
 
-import { useState } from 'react'
-import { User, Lock } from 'lucide-react'
+import { useState, Suspense } from 'react'
+import { User, Lock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { apiClient } from '@/lib/api/client'
+import { z } from 'zod'
 
+// Schema de validação
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+})
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [generalError, setGeneralError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrors({})
+    setGeneralError('')
+
+    // Valida dados
+    try {
+      const data = loginSchema.parse({ email, password })
+      
+      setIsLoading(true)
+      
+      const response = await apiClient.login(data as { email: string; password: string })
+      console.log('Login response:', response)
+      
+      // Redireciona para a página especificada no parâmetro redirect ou dashboard
+      const redirectTo = searchParams.get('redirect') || '/dashboard'
+      console.log('Redirecting to:', redirectTo)
+      router.push(redirectTo)
+      
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {}
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message
+          }
+        })
+        setErrors(fieldErrors)
+      } else if (error instanceof Error) {
+        setGeneralError(error.message)
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div
@@ -26,32 +76,55 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Card de login reduzido para proporções típicas */}
-        <div className="bg-[#FAFBEF] w-full max-w-md p-8 rounded-2xl shadow-md flex flex-col gap-6 justify-center">
+        {/* Card de login */}
+        <form 
+          onSubmit={handleSubmit}
+          className="bg-[#FAFBEF] w-full max-w-md p-8 rounded-2xl shadow-md flex flex-col gap-6 justify-center"
+        >
+          {/* Erro geral */}
+          {generalError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-center gap-2">
+              <AlertCircle size={18} />
+              <p className="text-sm">{generalError}</p>
+            </div>
+          )}
+
           {/* Campos de entrada */}
           <div className="flex flex-col gap-4">
-            {/* Campo usuário */}
-            <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
-              <User size={18} className="mr-2 text-white" />
-              <input
-                type="text"
-                placeholder="USUÁRIO OU E-MAIL"
-                className="bg-transparent outline-none w-full placeholder:text-white"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            {/* Campo email */}
+            <div>
+              <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
+                <User size={18} className="mr-2 text-white" />
+                <input
+                  type="email"
+                  placeholder="E-MAIL"
+                  className="bg-transparent outline-none w-full placeholder:text-white"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-red-600 text-sm mt-1 ml-4">{errors.email}</p>
+              )}
             </div>
 
             {/* Campo senha */}
-            <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
-              <Lock size={18} className="mr-2 text-white" />
-              <input
-                type="password"
-                placeholder="SENHA"
-                className="bg-transparent outline-none w-full placeholder:text-white"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-              />
+            <div>
+              <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
+                <Lock size={18} className="mr-2 text-white" />
+                <input
+                  type="password"
+                  placeholder="SENHA"
+                  className="bg-transparent outline-none w-full placeholder:text-white"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-red-600 text-sm mt-1 ml-4">{errors.password}</p>
+              )}
             </div>
 
             <Link
@@ -61,8 +134,12 @@ export default function LoginPage() {
               Esqueci minha SENHA!
             </Link>
 
-            <button className="bg-green-700 text-white py-3 rounded-full font-semibold hover:bg-green-800 transition-all">
-              ENTRAR
+            <button 
+              type="submit"
+              disabled={isLoading}
+              className="bg-green-700 text-white py-3 rounded-full font-semibold hover:bg-green-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'ENTRANDO...' : 'ENTRAR'}
             </button>
           </div>
 
@@ -80,8 +157,23 @@ export default function LoginPage() {
               Crie uma agora!
             </Link>
           </p>
-        </div>
+        </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

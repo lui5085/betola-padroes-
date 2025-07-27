@@ -3,7 +3,9 @@ import { IHasher } from '../services/hasher';
 import { InvalidResetTokenError } from './errors/invalid-reset-token-error';
 import { Token } from '../../../shared/types/token';
 import { Timestamp } from '../../../shared/types/timestamp';
-import { Password } from '../../../shared/types/password';
+import { PlainPassword } from '../../../shared/plain-password';
+import { HashedPassword } from '../../../shared/types/hashed-password';
+import { Result } from '../../shared/application/result';
 
 interface ResetPasswordUseCaseRequest {
   token: string;
@@ -19,24 +21,34 @@ export class ResetPasswordUseCase {
   async execute({
     token,
     newPassword,
-  }: ResetPasswordUseCaseRequest): Promise<void> {
-    const tokenVO = new Token(token);
-    const user = await this.usersRepository.findByPasswordResetToken(tokenVO);
+  }: ResetPasswordUseCaseRequest): Promise<Result<void>> {
+    try {
+      const tokenVO = new Token(token);
+      const plainPasswordVO = new PlainPassword(newPassword);
+      
+      const user = await this.usersRepository.findByPasswordResetToken(tokenVO);
 
-    if (!user || !user.passwordResetExpires) {
-      throw new InvalidResetTokenError();
+      if (!user || !user.passwordResetExpires) {
+        return Result.failure('Invalid or expired reset token');
+      }
+
+      const now = new Timestamp(new Date());
+      if (now.value.getTime() > user.passwordResetExpires.value.getTime()) {
+        return Result.failure('Reset token has expired');
+      }
+
+      const hashedPassword = await this.hasher.hash(plainPasswordVO.value);
+      const hashedPasswordVO = new HashedPassword(hashedPassword);
+      
+      user.updatePassword(hashedPasswordVO);
+      await this.usersRepository.save(user);
+
+      return Result.success(undefined);
+    } catch (error) {
+      if (error instanceof Error) {
+        return Result.failure(error.message);
+      }
+      return Result.failure('An unexpected error occurred');
     }
-
-    const now = new Timestamp(new Date());
-    if (now.value.getTime() > user.passwordResetExpires.value.getTime()) {
-      throw new InvalidResetTokenError();
-    }
-
-    const hashedPassword = await this.hasher.hash(newPassword);
-    user.password = new Password(hashedPassword);
-    user.passwordResetToken = null;
-    user.passwordResetExpires = null;
-
-    await this.usersRepository.save(user);
   }
-} 
+}

@@ -1,14 +1,21 @@
 {
   "name": "@betola/adapters",
   "version": "1.0.0",
-  "private": true,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -w -p tsconfig.json"
+    "dev": "tsc --watch"
   },
   "dependencies": {
-    "@betola/core": "*"
+    "@betola/core": "*",
+    "@prisma/client": "^6.12.0",
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.0",
+    "typescript": "^5.1.3"
   }
-} 
+}

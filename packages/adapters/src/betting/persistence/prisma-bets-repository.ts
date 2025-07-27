@@ -1,0 +1,142 @@
+import { PrismaClient } from '@prisma/client';
+import { 
+  BetsRepository,
+  Bet,
+  BetId,
+  UserId,
+  BetStatus,
+  BetFilters,
+  PaginatedBets,
+  BetAmount,
+  BetStatusVO,
+  DateTime,
+  Odds,
+  MarketTypeVO,
+  MarketType,
+  MatchId,
+  BetSelection
+} from '@betola/core';
+
+export class PrismaBetsRepository implements BetsRepository {
+  constructor(private prisma: PrismaClient) {}
+
+  async save(bet: Bet): Promise<void> {
+    await this.prisma.bet.create({
+      data: {
+        id: bet.id.value,
+        userId: bet.userId.value,
+        totalOdds: bet.totalOdds.value,
+        amount: bet.amount.value,
+        potentialWin: bet.potentialWin,
+        status: bet.status.value,
+        selections: {
+          create: bet.selections.map(selection => ({
+            matchId: selection.matchId.value,
+            marketType: selection.marketType.value,
+            selection: selection.selection,
+            odds: selection.odds.value
+          }))
+        }
+      }
+    });
+  }
+
+  async findById(id: BetId): Promise<Bet | null> {
+    const bet = await this.prisma.bet.findUnique({
+      where: { id: id.value },
+      include: { selections: true }
+    });
+
+    if (!bet) return null;
+
+    return this.toDomain(bet);
+  }
+
+  async findByUserId(userId: UserId, filters?: BetFilters): Promise<PaginatedBets> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId: userId.value };
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.bet.findMany({
+        where,
+        include: { selections: true },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      }),
+      this.prisma.bet.count({ where })
+    ]);
+
+    return {
+      items: items.map(bet => this.toDomain(bet)),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  async findPendingBets(): Promise<Bet[]> {
+    const bets = await this.prisma.bet.findMany({
+      where: { status: 'PENDING' },
+      include: { selections: true }
+    });
+
+    return bets.map(bet => this.toDomain(bet));
+  }
+
+  async findPendingBetsForMatches(matchIds: string[]): Promise<Bet[]> {
+    const bets = await this.prisma.bet.findMany({
+      where: { 
+        status: 'PENDING',
+        selections: {
+          some: {
+            matchId: { in: matchIds }
+          }
+        }
+      },
+      include: { selections: true }
+    });
+
+    return bets.map(bet => this.toDomain(bet));
+  }
+
+  async update(bet: Bet): Promise<void> {
+    await this.prisma.bet.update({
+      where: { id: bet.id.value },
+      data: {
+        status: bet.status.value,
+        settledAt: bet.settledAt?.value,
+        updatedAt: bet.updatedAt.value
+      }
+    });
+  }
+
+  private toDomain(bet: any): Bet {
+    const selections = bet.selections.map((s: any) => 
+      new BetSelection({
+        betId: new BetId(bet.id),
+        matchId: new MatchId(s.matchId),
+        marketType: new MarketTypeVO(s.marketType as MarketType),
+        selection: s.selection,
+        odds: new Odds(s.odds)
+      })
+    );
+
+    return new Bet({
+      id: new BetId(bet.id),
+      userId: new UserId(bet.userId),
+      selections,
+      amount: new BetAmount(bet.amount),
+      status: new BetStatusVO(bet.status as BetStatus),
+      settledAt: bet.settledAt ? new DateTime(bet.settledAt) : undefined,
+      createdAt: new DateTime(bet.createdAt),
+      updatedAt: new DateTime(bet.updatedAt)
+    });
+  }
+}

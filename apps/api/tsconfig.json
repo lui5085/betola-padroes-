@@ -1,5 +1,4 @@
 {
-  "extends": "@repo/typescript-config/nestjs.json",
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
@@ -17,7 +16,13 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@betola/core": ["../../packages/core/src"],
+      "@betola/core/*": ["../../packages/core/src/*"],
+      "@betola/adapters": ["../../packages/adapters/src"],
+      "@betola/adapters/*": ["../../packages/adapters/src/*"]
+    }
   },
   "include": ["src/**/*"]
 }

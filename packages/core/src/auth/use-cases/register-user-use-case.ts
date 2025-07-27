@@ -1,15 +1,17 @@
+// packages/core/src/auth/use-cases/register-user-use-case.ts
 import { Email } from '../../../shared/types/email';
-import { Password } from '../../../shared/types/password';
+import { PlainPassword } from '../../../shared/plain-password';
+import { HashedPassword } from '../../../shared/types/hashed-password';
 import { Username } from '../../../shared/types/username';
 import { UserId } from '../../../shared/types/user-id';
-import { Timestamp } from '../../../shared/types/timestamp';
 import { User } from '../entities/user';
+import { Profile } from '../entities/profile';
 import { IUsersRepository } from '../repositories/users-repository';
+import { IProfilesRepository } from '../repositories/profiles-repository';
 import { IHasher } from '../services/hasher';
 import { EmailAlreadyExistsError } from './errors/email-already-exists-error';
-import { IProfilesRepository } from '../repositories/profiles-repository';
-import { Profile } from '../entities/profile';
 import { UsernameAlreadyExistsError } from './errors/username-already-exists-error';
+import { Result } from '../../shared/application/result';
 
 interface RegisterUserUseCaseRequest {
   email: string;
@@ -37,46 +39,54 @@ export class RegisterUserUseCase {
     username,
     firstName,
     lastName,
-  }: RegisterUserUseCaseRequest): Promise<RegisterUserUseCaseResponse> {
-    const emailVO = new Email(email);
-    const passwordVO = new Password(password);
-    const usernameVO = new Username(username);
+  }: RegisterUserUseCaseRequest): Promise<Result<RegisterUserUseCaseResponse>> {
+    try {
+      // Validações de entrada
+      const emailVO = new Email(email);
+      const plainPasswordVO = new PlainPassword(password);
+      const usernameVO = new Username(username);
 
-    const emailAlreadyExists = await this.usersRepository.findByEmail(emailVO);
-    if (emailAlreadyExists) {
-      throw new EmailAlreadyExistsError();
+      // Verifica se email já existe
+      const emailAlreadyExists = await this.usersRepository.findByEmail(emailVO);
+      if (emailAlreadyExists) {
+        return Result.failure('Email already registered');
+      }
+
+      // Verifica se username já existe
+      const usernameAlreadyExists = await this.usersRepository.findByUsername(usernameVO);
+      if (usernameAlreadyExists) {
+        return Result.failure('Username already taken');
+      }
+
+      // Hash da senha
+      const hashedPasswordStr = await this.hasher.hash(plainPasswordVO.value);
+      const hashedPasswordVO = new HashedPassword(hashedPasswordStr);
+
+      // Cria usuário
+      const user = new User({
+        email: emailVO,
+        username: usernameVO,
+        passwordHash: hashedPasswordVO,
+      });
+
+      // Cria profile
+      const profile = new Profile({
+        userId: user.id,
+        displayName: `${firstName || ''} ${lastName || ''}`.trim() || username,
+        avatarUrl: null,
+        bio: null,
+        favoriteTeam: null,
+      });
+
+      // Salva em transação
+      await this.usersRepository.createWithProfile(user, profile);
+
+      return Result.success({ user, profile });
+    } catch (error) {
+      if (error instanceof Error) {
+        return Result.failure(error.message);
+      }
+      return Result.failure('An unexpected error occurred during registration');
     }
-
-    const usernameAlreadyExists = await this.profilesRepository.findByUsername(usernameVO);
-    if (usernameAlreadyExists) {
-      throw new UsernameAlreadyExistsError();
-    }
-
-    // Supondo que o hasher retorna string, mas o VO Password espera string "pura" (não hash),
-    // então criamos o Password VO com o hash
-    const hashedPassword = await this.hasher.hash(password);
-    const hashedPasswordVO = new Password(hashedPassword);
-
-    const user = new User({
-      email: emailVO,
-      password: hashedPasswordVO,
-    });
-
-    await this.usersRepository.create(user);
-
-    const profile = new Profile({
-      userId: user.id,
-      username: usernameVO,
-      firstName: firstName ?? null,
-      lastName: lastName ?? null,
-      avatarUrl: null,
-    });
-
-    await this.profilesRepository.create(profile);
-
-    return {
-      user,
-      profile,
-    };
   }
-} 
+}

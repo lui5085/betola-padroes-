@@ -4,9 +4,11 @@ import * as React from 'react'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode
+  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'link' | 'outline'
+  size?: 'sm' | 'md' | 'lg' | 'icon'
 }
 
-export function Button({ children, className = '', ...props }: ButtonProps) {
+export function Button({ children, className = '', variant = 'default', size = 'md', ...props }: ButtonProps) {
   return (
     <button
       {...props}

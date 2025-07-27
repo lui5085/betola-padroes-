@@ -6,6 +6,7 @@ import { User } from '../entities/user';
 import { Profile } from '../entities/profile';
 import { Email } from '../../../shared/types/email';
 import { Password } from '../../../shared/types/password';
+import { HashedPassword } from '../../../shared/types/hashed-password';
 import { Username } from '../../../shared/types/username';
 import { UserId } from '../../../shared/types/user-id';
 import { Timestamp } from '../../../shared/types/timestamp';
@@ -16,9 +17,9 @@ describe('RegisterUserUseCase', () => {
   const email = new Email('user@example.com');
   const password = new Password('Senha123!');
   const username = new Username('joaovitor');
-  const hashedPassword = new Password('Senha123!');
-  const user = new User({ email, password: hashedPassword });
-  const profile = new Profile({ userId: user.id, username, firstName: 'João', lastName: 'Vitor', avatarUrl: null });
+  const hashedPassword = new HashedPassword('$2b$10$hashedpassword');
+  const user = new User({ email, username, passwordHash: hashedPassword });
+  const profile = new Profile({ userId: user.id, displayName: 'João Vitor', avatarUrl: null });
 
   let usersRepository: jest.Mocked<IUsersRepository>;
   let profilesRepository: jest.Mocked<IProfilesRepository>;
@@ -28,17 +29,19 @@ describe('RegisterUserUseCase', () => {
   beforeEach(() => {
     usersRepository = {
       findByEmail: jest.fn(),
+      findByUsername: jest.fn(),
       create: jest.fn(),
       findById: jest.fn(),
       findByPasswordResetToken: jest.fn(),
       save: jest.fn(),
+      createWithProfile: jest.fn(),
     };
     profilesRepository = {
-      findByUsername: jest.fn(),
       findByUserId: jest.fn(),
+      findByDisplayName: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
-    };
+    } as jest.Mocked<IProfilesRepository>;
     hasher = {
       hash: jest.fn(),
       compare: jest.fn(),
@@ -48,10 +51,9 @@ describe('RegisterUserUseCase', () => {
 
   it('deve registrar usuário com sucesso', async () => {
     usersRepository.findByEmail.mockResolvedValue(null);
-    profilesRepository.findByUsername.mockResolvedValue(null);
-    hasher.hash.mockResolvedValue(password.value);
-    usersRepository.create.mockResolvedValue();
-    profilesRepository.create.mockResolvedValue();
+    usersRepository.findByUsername.mockResolvedValue(null);
+    hasher.hash.mockResolvedValue('$2b$10$hashedpassword');
+    usersRepository.createWithProfile.mockResolvedValue();
 
     const result = await useCase.execute({
       email: email.value,
@@ -60,32 +62,32 @@ describe('RegisterUserUseCase', () => {
       firstName: 'João',
       lastName: 'Vitor',
     });
-    expect(result.user.email.value).toBe(email.value);
-    expect(result.profile.username.value).toBe(username.value);
-    expect(usersRepository.create).toHaveBeenCalled();
-    expect(profilesRepository.create).toHaveBeenCalled();
+    expect(result.isSuccess()).toBe(true);
+    expect(result.value.user.email.value).toBe(email.value);
+    expect(result.value.profile.displayName).toBe('João Vitor');
+    expect(usersRepository.createWithProfile).toHaveBeenCalled();
   });
 
   it('deve falhar se email já existir', async () => {
     usersRepository.findByEmail.mockResolvedValue(user);
-    await expect(
-      useCase.execute({
-        email: email.value,
-        password: password.value,
-        username: username.value,
-      })
-    ).rejects.toThrow(EmailAlreadyExistsError);
+    const result = await useCase.execute({
+      email: email.value,
+      password: password.value,
+      username: username.value,
+    });
+    expect(result.isFailure()).toBe(true);
+    expect(result.error).toBe('Email already registered');
   });
 
   it('deve falhar se username já existir', async () => {
     usersRepository.findByEmail.mockResolvedValue(null);
-    profilesRepository.findByUsername.mockResolvedValue(profile);
-    await expect(
-      useCase.execute({
-        email: email.value,
-        password: password.value,
-        username: username.value,
-      })
-    ).rejects.toThrow(UsernameAlreadyExistsError);
+    usersRepository.findByUsername.mockResolvedValue(user);
+    const result = await useCase.execute({
+      email: email.value,
+      password: password.value,
+      username: username.value,
+    });
+    expect(result.isFailure()).toBe(true);
+    expect(result.error).toBe('Username already taken');
   });
 }); 

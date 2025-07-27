@@ -3,7 +3,7 @@ import { IProfilesRepository } from '../repositories/profiles-repository';
 import { UserNotFoundError } from './errors/user-not-found-error';
 import { UserId } from '../../../shared/types/user-id';
 
-interface GetProfileUseCaseResponse {
+export interface GetProfileUseCaseResponse {
   profile: Profile;
 }
 

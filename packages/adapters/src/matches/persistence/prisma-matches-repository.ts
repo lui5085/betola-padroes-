@@ -1,0 +1,183 @@
+import { PrismaClient } from '@prisma/client';
+import {
+  MatchesRepository,
+  Match,
+  MatchId,
+  TeamId,
+  DateTime,
+  MatchStatus,
+  MatchStatusVO,
+  MatchFilters
+} from '@betola/core';
+
+export class PrismaMatchesRepository implements MatchesRepository {
+  constructor(private prisma: PrismaClient) {}
+
+  async save(match: Match): Promise<void> {
+    await this.prisma.match.create({
+      data: {
+        id: match.id.value,
+        externalId: match.externalId,
+        homeTeamId: match.homeTeamId.value,
+        awayTeamId: match.awayTeamId.value,
+        kickoffTime: match.kickoffTime.value,
+        status: match.status.value,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        round: match.round,
+        season: match.season
+      }
+    });
+  }
+
+  async findById(id: MatchId): Promise<Match | null> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: id.value }
+    });
+
+    if (!match) return null;
+
+    return this.toDomain(match);
+  }
+
+  async findByExternalId(externalId: string): Promise<Match | null> {
+    const match = await this.prisma.match.findUnique({
+      where: { externalId }
+    });
+
+    if (!match) return null;
+
+    return this.toDomain(match);
+  }
+
+  async findUpcoming(limit?: number): Promise<Match[]> {
+    const matches = await this.prisma.match.findMany({
+      where: {
+        status: 'SCHEDULED',
+        kickoffTime: {
+          gte: new Date()
+        }
+      },
+      orderBy: { kickoffTime: 'asc' },
+      take: limit || 20
+    });
+
+    return matches.map(match => this.toDomain(match));
+  }
+
+  async findByFilters(filters: MatchFilters): Promise<Match[]> {
+    const where: any = {};
+    
+    if (filters.status) {
+      where.status = filters.status;
+    }
+    
+    if (filters.upcoming) {
+      where.kickoffTime = { gte: new Date() };
+    }
+    
+    if (filters.date) {
+      const startOfDay = new Date(filters.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(filters.date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      where.kickoffTime = {
+        gte: startOfDay,
+        lte: endOfDay
+      };
+    }
+
+    const matches = await this.prisma.match.findMany({
+      where,
+      orderBy: { kickoffTime: 'asc' }
+    });
+
+    return matches.map(match => this.toDomain(match));
+  }
+
+  async findAvailableForBetting(): Promise<Match[]> {
+    const matches = await this.prisma.match.findMany({
+      where: {
+        status: { in: ['SCHEDULED', 'LIVE'] },
+        kickoffTime: {
+          gte: new Date()
+        }
+      },
+      orderBy: { kickoffTime: 'asc' }
+    });
+
+    return matches.map(match => this.toDomain(match));
+  }
+
+  async findFinishedWithPendingBets(): Promise<Match[]> {
+    const matches = await this.prisma.match.findMany({
+      where: {
+        status: 'FINISHED',
+        betSelections: {
+          some: {
+            bet: {
+              status: 'PENDING'
+            }
+          }
+        }
+      },
+      orderBy: { kickoffTime: 'desc' }
+    });
+
+    return matches.map(match => this.toDomain(match));
+  }
+
+  async update(match: Match): Promise<void> {
+    await this.prisma.match.update({
+      where: { id: match.id.value },
+      data: {
+        status: match.status.value,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        updatedAt: match.updatedAt.value
+      }
+    });
+  }
+
+  async upsert(match: Match): Promise<void> {
+    await this.prisma.match.upsert({
+      where: { id: match.id.value },
+      create: {
+        id: match.id.value,
+        externalId: match.externalId,
+        homeTeamId: match.homeTeamId.value,
+        awayTeamId: match.awayTeamId.value,
+        kickoffTime: match.kickoffTime.value,
+        status: match.status.value,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        round: match.round,
+        season: match.season
+      },
+      update: {
+        status: match.status.value,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        updatedAt: match.updatedAt.value
+      }
+    });
+  }
+
+  private toDomain(match: any): Match {
+    return new Match({
+      id: new MatchId(match.id),
+      externalId: match.externalId,
+      homeTeamId: new TeamId(match.homeTeamId),
+      awayTeamId: new TeamId(match.awayTeamId),
+      kickoffTime: new DateTime(match.kickoffTime),
+      status: new MatchStatusVO(match.status as MatchStatus),
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
+      round: match.round,
+      season: match.season,
+      createdAt: new DateTime(match.createdAt),
+      updatedAt: new DateTime(match.updatedAt)
+    });
+  }
+}

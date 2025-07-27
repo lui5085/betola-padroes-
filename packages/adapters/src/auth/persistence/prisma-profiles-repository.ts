@@ -2,7 +2,6 @@ import { IProfilesRepository, Profile } from '@betola/core';
 import { PrismaClient } from '@prisma/client';
 import { prisma } from './prisma';
 import { UserId } from '@betola/core/shared/types/user-id';
-import { Username } from '@betola/core/shared/types/username';
 import { Timestamp } from '@betola/core/shared/types/timestamp';
 
 export class PrismaProfilesRepository implements IProfilesRepository {
@@ -10,13 +9,13 @@ export class PrismaProfilesRepository implements IProfilesRepository {
     await prisma.profile.create({
       data: {
         id: profile.id.value,
-        username: profile.username.value,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
+        userId: profile.userId.value,
+        displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
+        bio: profile.bio,
+        favoriteTeam: profile.favoriteTeam,
         createdAt: profile.createdAt.value,
         updatedAt: profile.updatedAt.value,
-        userId: profile.userId.value,
       },
     });
   }
@@ -35,10 +34,10 @@ export class PrismaProfilesRepository implements IProfilesRepository {
     return new Profile(
       {
         userId: new UserId(profile.userId),
-        username: new Username(profile.username),
-        firstName: profile.firstName,
-        lastName: profile.lastName,
+        displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
+        bio: profile.bio,
+        favoriteTeam: profile.favoriteTeam,
       },
       new UserId(profile.id),
       new Timestamp(profile.createdAt),
@@ -46,10 +45,10 @@ export class PrismaProfilesRepository implements IProfilesRepository {
     );
   }
 
-  async findByUsername(username: Username): Promise<Profile | null> {
-    const profile = await prisma.profile.findUnique({
+  async findByDisplayName(displayName: string): Promise<Profile | null> {
+    const profile = await prisma.profile.findFirst({
       where: {
-        username: username.value,
+        displayName: displayName,
       },
     });
 
@@ -60,10 +59,10 @@ export class PrismaProfilesRepository implements IProfilesRepository {
     return new Profile(
       {
         userId: new UserId(profile.userId),
-        username: new Username(profile.username),
-        firstName: profile.firstName,
-        lastName: profile.lastName,
+        displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
+        bio: profile.bio,
+        favoriteTeam: profile.favoriteTeam,
       },
       new UserId(profile.id),
       new Timestamp(profile.createdAt),
@@ -77,10 +76,10 @@ export class PrismaProfilesRepository implements IProfilesRepository {
         id: profile.id.value,
       },
       data: {
-        username: profile.username.value,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
+        displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
+        bio: profile.bio,
+        favoriteTeam: profile.favoriteTeam,
         updatedAt: new Date(),
       },
     });

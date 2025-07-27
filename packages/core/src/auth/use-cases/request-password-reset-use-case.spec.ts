@@ -7,11 +7,15 @@ import { Email } from '../../../shared/types/email';
 import { Token } from '../../../shared/types/token';
 import { Timestamp } from '../../../shared/types/timestamp';
 import { Password } from '../../../shared/types/password';
+import { HashedPassword } from '../../../shared/types/hashed-password';
+import { Username } from '../../../shared/types/username';
 
 const makeUsersRepository = (): jest.Mocked<IUsersRepository> => ({
   findByEmail: jest.fn(),
+  findByUsername: jest.fn(),
   save: jest.fn(),
   create: jest.fn(),
+  createWithProfile: jest.fn(),
   findByPasswordResetToken: jest.fn(),
   findById: jest.fn(),
 });
@@ -27,7 +31,8 @@ describe('RequestPasswordResetUseCase', () => {
     const useCase = new RequestPasswordResetUseCase(usersRepository, emailSender);
     const user = new User({
       email: new Email('test@example.com'),
-      password: new Password('Senha@123'),
+      username: new Username('testuser'),
+      passwordHash: new HashedPassword('$2b$10$hashedpassword'),
     });
     usersRepository.findByEmail.mockResolvedValue(user);
     await useCase.execute({ email: 'test@example.com' });

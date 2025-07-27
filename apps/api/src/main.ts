@@ -1,15 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { DebugInterceptor } from './debug.interceptor';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
   const logger = new Logger('Bootstrap');
+  app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe());
-  app.useGlobalInterceptors(new DebugInterceptor());
 
   logger.debug('Configurando CORS...');
   app.enableCors({
@@ -21,7 +21,7 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  const PORT = parseInt(process.env.PORT ?? '3001', 10);
+  const PORT = parseInt(process.env.PORT ?? '3002', 10);
   await app.listen(PORT);
   logger.log(`API escutando na porta ${PORT}`);
 }
