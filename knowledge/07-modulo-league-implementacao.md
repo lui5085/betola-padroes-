@@ -277,6 +277,7 @@ npx prisma migrate dev --name add_league_models
 2. **WebSocket Gateway** (pendente)
 3. ✅ **Module** configuration
 4. **Testes** de API (pendente)
+5. ✅ **API básica funcionando** (sem autenticação)
 
 ### Sprint 5: UI
 1. **Páginas** principais
