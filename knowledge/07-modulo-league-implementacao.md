@@ -267,9 +267,9 @@ npx prisma migrate dev --name add_league_models
 4. ✅ **Interfaces** (repositories e services)
 
 ### Sprint 3: Database
-1. **Schema Prisma** (League, LeagueParticipant, ChatMessage)
-2. **Migração** do banco
-3. **Adapters** (Prisma repositories)
+1. ✅ **Schema Prisma** (League, LeagueParticipant, ChatMessage)
+2. ✅ **Migração** do banco
+3. ✅ **Adapters** (Prisma repositories)
 4. **Testes** de integração
 
 ### Sprint 4: API
@@ -300,13 +300,13 @@ npx prisma migrate dev --name add_league_models
 - [x] Testes unitários passando
 
 ### ✅ Fase 2: Database
-- [ ] Schema Prisma atualizado
-- [ ] Migração executada
-- [ ] Relações configuradas
+- [x] Schema Prisma atualizado
+- [x] Migração executada
+- [x] Relações configuradas
 
 ### ✅ Fase 3: Adapters
-- [ ] Repositories implementados
-- [ ] Chat Gateway implementado
+- [x] Repositories implementados
+- [x] Chat Gateway implementado
 - [ ] Testes de adapters
 
 ### ✅ Fase 4: API
