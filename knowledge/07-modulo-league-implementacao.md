@@ -76,7 +76,7 @@ export const MAX_DESCRIPTION_LENGTH = 255;
 ### 1.7 Testes Unitários
 - [x] Testes para todos os Value Objects
 - [x] Testes para todas as entidades
-- [x] Testes para todos os Use Cases (parcial)
+- [x] Testes para todos os Use Cases (completo)
 - [x] Testes para erros de domínio
 
 ## 🗄️ Fase 2: Database Schema (Prisma)
@@ -261,10 +261,10 @@ npx prisma migrate dev --name add_league_models
 4. ✅ **Testes unitários** para VOs e entidade
 
 ### Sprint 2: Core Domain
-1. **Todos os Use Cases** restantes
-2. **Erros de domínio**
-3. **Testes unitários** para Use Cases
-4. **Interfaces** (repositories e services)
+1. ✅ **Todos os Use Cases** restantes
+2. ✅ **Erros de domínio**
+3. ✅ **Testes unitários** para Use Cases
+4. ✅ **Interfaces** (repositories e services)
 
 ### Sprint 3: Database
 1. **Schema Prisma** (League, LeagueParticipant, ChatMessage)
@@ -295,7 +295,7 @@ npx prisma migrate dev --name add_league_models
 ### ✅ Fase 1: Core Domain
 - [x] Value Objects implementados
 - [x] Entidades criadas
-- [x] Use Cases implementados (parcial)
+- [x] Use Cases implementados (completo)
 - [x] Erros de domínio definidos
 - [x] Testes unitários passando
 
