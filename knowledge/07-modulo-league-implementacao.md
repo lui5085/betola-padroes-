@@ -75,7 +75,7 @@ export const MAX_DESCRIPTION_LENGTH = 255;
 
 ### 1.7 Testes Unitários
 - [x] Testes para todos os Value Objects
-- [ ] Testes para todas as entidades
+- [x] Testes para todas as entidades
 - [ ] Testes para todos os Use Cases
 - [ ] Testes para erros de domínio
 
@@ -256,7 +256,7 @@ npx prisma migrate dev --name add_league_models
 
 ### Sprint 1: Foundation
 1. ✅ **Value Objects** (Title, LeagueId, Description, ImageUrl)
-2. **Entidade League** básica
+2. ✅ **Entidade League** básica
 3. **Primeiro Use Case** (CreateLeagueUseCase)
 4. **Testes unitários** para VOs e entidade
 
@@ -294,7 +294,7 @@ npx prisma migrate dev --name add_league_models
 
 ### ✅ Fase 1: Core Domain
 - [x] Value Objects implementados
-- [ ] Entidades criadas
+- [x] Entidades criadas
 - [ ] Use Cases implementados
 - [ ] Erros de domínio definidos
 - [ ] Testes unitários passando
