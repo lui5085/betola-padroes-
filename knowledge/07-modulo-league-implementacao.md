@@ -153,24 +153,24 @@ npx prisma migrate dev --name add_league_models
 ### 4.1 Controllers
 ```typescript
 // apps/api/src/league/
-- league.controller.ts
-- league-chat.gateway.ts
+- league.controller.ts ✅
+- league-chat.gateway.ts (pendente)
 ```
 
 ### 4.2 DTOs
 ```typescript
 // apps/api/src/league/dto/
-- create-league.dto.ts
-- update-league.dto.ts
-- join-league.dto.ts
-- chat-message.dto.ts
-- league-response.dto.ts
+- create-league.dto.ts ✅
+- update-league.dto.ts ✅
+- join-league.dto.ts (pendente)
+- chat-message.dto.ts (pendente)
+- league-response.dto.ts ✅
 ```
 
 ### 4.3 Module
 ```typescript
 // apps/api/src/league/
-- league.module.ts
+- league.module.ts ✅
 ```
 
 ### 4.4 Endpoints REST
@@ -273,10 +273,10 @@ npx prisma migrate dev --name add_league_models
 4. **Testes** de integração
 
 ### Sprint 4: API
-1. **Controllers** e DTOs
-2. **WebSocket Gateway**
-3. **Module** configuration
-4. **Testes** de API
+1. ✅ **Controllers** e DTOs básicos
+2. **WebSocket Gateway** (pendente)
+3. ✅ **Module** configuration
+4. **Testes** de API (pendente)
 
 ### Sprint 5: UI
 1. **Páginas** principais
@@ -310,8 +310,8 @@ npx prisma migrate dev --name add_league_models
 - [ ] Testes de adapters
 
 ### ✅ Fase 4: API
-- [ ] Controllers criados
-- [ ] DTOs definidos
+- [x] Controllers criados
+- [x] DTOs definidos
 - [ ] WebSocket funcionando
 - [ ] Testes de API
 
