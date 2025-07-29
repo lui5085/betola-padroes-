@@ -11,4 +11,4 @@ import { LeagueModule } from './league/league.module';
   controllers: [AppController, AuthController],
   providers: [AppService, AuthService],
 })
-export class AppModule {}
+export class AppModule { }
