@@ -1,0 +1,97 @@
+# Módulo • Liga (League)
+
+> CRUD simples + chat ao vivo e ranking por betoletas. Implementação seguindo Clean Architecture.
+
+## 1. Entidade `League`
+
+| Campo         | Tipo        | Regra                   |
+| ------------- | ----------- | ----------------------- |
+| `id`          | `UUID`      | gerado pelo repositório |
+| `title`       | `string`    | 3‑50 caracteres         |
+| `description` | `string`    | opcional, máx 255       |
+| `imageUrl`    | `URL`       | opcional                |
+| `ownerId`     | `UUID`      | usuário criador         |
+| `createdAt`   | `Timestamp` | automático              |
+
+`League` estende `Entity`; validações ficam no construtor.
+
+## 2. Agregado
+
+`LeagueAggregate` contém:
+
+- `league: League`
+- `participants: Set<UUID>` (ids de usuários)
+
+## 3. Providers (`provider/`)
+
+```ts
+export interface LeagueRepository {
+  create(league: League): Promise<void>;
+  save(league: League): Promise<void>;
+  findById(id: UUID): Promise<League | null>;
+  listByUser(userId: UUID): Promise<League[]>;
+}
+
+export interface LeagueChatGateway {
+  sendMessage(leagueId: UUID, userId: UUID, msg: string): Promise<void>;
+  subscribe(leagueId: UUID, userId: UUID): AsyncIterator<ChatMessage>;
+}
+```
+
+## 4. Use Cases (`service/`)
+
+- `CreateLeagueUseCase`
+- `JoinLeagueUseCase`
+- `LeaveLeagueUseCase`
+- `UpdateLeagueUseCase`
+- `DeleteLeagueUseCase`
+- `ListLeagueParticipantsUseCase`
+
+### Regras de negócio
+
+1. Owner entra automaticamente na liga.
+2. Máximo de 100 participantes (constante `MAX_PARTICIPANTS`).
+3. Owner não pode ser removido sem transferir propriedade.
+
+## 5. Adapter inicial (Prisma)
+
+- Tabela `leagues` (id, title, description, image\_url, owner\_id, created\_at)
+- Tabela `league_participants` (league\_id, user\_id, joined\_at)
+
+`PrismaLeagueRepository` vive em `packages/adapters/db`.
+
+## 6. Chat
+
+- Core define apenas `LeagueChatGateway` e VO `ChatMessage`.
+- `apps/api`: implementar gateway com `@nestjs/websockets`; usar Redis ou memória.
+
+## 7. Endpoints REST (Nest)
+
+| Método | Rota                        | UseCase      |
+| ------ | --------------------------- | ------------ |
+| POST   | `/leagues`                  | CreateLeague |
+| GET    | `/leagues/:id`              | detalhes     |
+| PATCH  | `/leagues/:id`              | update       |
+| DELETE | `/leagues/:id`              | delete       |
+| POST   | `/leagues/:id/join`         | join         |
+| POST   | `/leagues/:id/leave`        | leave        |
+| GET    | `/leagues/:id/participants` | lista        |
+
+WebSocket: namespace `/ws/leagues/:id/chat`.
+
+## 8. UI (Next)
+
+- Página `/leagues` lista ligas do usuário.
+- Página `/leagues/[id]` com tabs **Overview · Chat · Ranking**.
+- Ranking virá de `/leagues/:id/ranking` (depende da carteira).
+
+## 9. Tarefas imediatas
+
+1. 🛠️ Criar pasta `packages/core/liga` e sub‑pastas.
+2. ✍️ Adicionar VO `Title` caso útil.
+3. 🧪 Tests unitários (UseCases + fake repo).
+4. 🗄 Schema + migração Prisma.
+5. 🎯 Controllers Nest + DTOs.
+6. 💬 Stub WebSocket Gateway (echo) para UI.
+7. 📝 Atualizar docs/ADR na PR.
+
