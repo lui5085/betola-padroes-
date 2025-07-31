@@ -2,14 +2,16 @@ import { apiClient } from './client';
 
 export interface BetSelection {
   matchId: string;
+  marketId: string;
   marketType: string;
-  selection: string;
+  optionName: string;
   odds: number;
 }
 
 export interface PlaceBetRequest {
   selections: BetSelection[];
   amount: number;
+  type: 'SINGLE' | 'MULTIPLE' | 'SYSTEM';
 }
 
 export interface BetResponse {
@@ -44,5 +46,5 @@ export async function getUserBets(params?: GetBetsParams): Promise<PaginatedBets
 }
 
 export async function getBetDetails(betId: string): Promise<BetResponse> {
-  return await apiClient.getUserBets({ betId }) as BetResponse;
+  return await apiClient.getBetDetails(betId) as BetResponse;
 }

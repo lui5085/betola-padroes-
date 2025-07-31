@@ -4,7 +4,6 @@ import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { Mail, ArrowLeft } from "lucide-react"
 
-// This is a custom component from the generator, we'll keep it for the nice underline effect
 const CenterUnderline = ({ label }: { label: string }) => {
   return (
     <motion.span

@@ -1,3 +1,5 @@
+// packages/adapters/src/wallet/persistence/prisma-wallets-repository.ts
+
 import { PrismaClient } from '@prisma/client';
 import {
   WalletsRepository,
@@ -51,7 +53,7 @@ export class PrismaWalletsRepository implements WalletsRepository {
         balance: wallet.balance.value,
         totalWon: wallet.totalWon.value,
         totalLost: wallet.totalLost.value,
-        updatedAt: wallet.updatedAt.value
+        updatedAt: wallet.updatedAt?.value || new Date()
       }
     });
   }
@@ -61,10 +63,10 @@ export class PrismaWalletsRepository implements WalletsRepository {
       id: new WalletId(wallet.id),
       userId: new UserId(wallet.userId),
       balance: new Balance(wallet.balance),
-      totalWon: new Money(wallet.totalWon),
-      totalLost: new Money(wallet.totalLost),
-      createdAt: new DateTime(wallet.createdAt),
-      updatedAt: new DateTime(wallet.updatedAt)
+      totalWon: new Money(wallet.totalWon || 0),
+      totalLost: new Money(wallet.totalLost || 0),
+      createdAt: wallet.createdAt ? new DateTime(wallet.createdAt) : undefined,
+      updatedAt: wallet.updatedAt ? new DateTime(wallet.updatedAt) : undefined
     });
   }
 }

@@ -7,6 +7,7 @@ import { MarketId } from '../../../betting/domain/value-objects/market-id';
 import { MatchId } from '../../domain/value-objects/match-id';
 import { MarketType } from '../../../betting/domain/value-objects/market-type';
 import { Odds } from '../../../betting/domain/value-objects/odds';
+import { UseCase } from '../../../../shared/application/use-case';
 
 export interface SyncMatchOddsRequest {
   matchId?: string;
@@ -17,10 +18,9 @@ export interface SyncMatchOddsRequest {
 export interface SyncMatchOddsResponse {
   marketsCreated: number;
   marketsUpdated: number;
-  errors: string[];
 }
 
-export class SyncMatchOddsUseCase {
+export class SyncMatchOddsUseCase implements UseCase<SyncMatchOddsRequest, SyncMatchOddsResponse> {
   constructor(
     private readonly footballApiService: FootballApiService,
     private readonly matchesRepository: MatchesRepository,
@@ -41,9 +41,12 @@ export class SyncMatchOddsUseCase {
         }
 
         const result = await this.syncOddsForMatch(match.id, match.externalId);
-        marketsCreated += result.created;
-        marketsUpdated += result.updated;
-        if (result.error) errors.push(result.error);
+        if (result.isSuccess()) {
+          marketsCreated += result.value.created;
+          marketsUpdated += result.value.updated;
+        } else {
+          errors.push(`Failed to sync odds for match ${match.id.value}: ${result.error}`);
+        }
       } else {
         // Sync odds for all upcoming matches
         const upcomingMatches = await this.matchesRepository.findAvailableForBetting();
@@ -53,8 +56,8 @@ export class SyncMatchOddsUseCase {
           
           try {
             const result = await this.syncOddsForMatch(match.id, match.externalId);
-            marketsCreated += result.created;
-            marketsUpdated += result.updated;
+            marketsCreated += result.value.created;
+            marketsUpdated += result.value.updated;
             if (result.error) errors.push(result.error);
           } catch (error) {
             errors.push(`Failed to sync odds for match ${match.id.value}: ${error.message}`);
@@ -74,15 +77,12 @@ export class SyncMatchOddsUseCase {
     }
   }
 
-  private async syncOddsForMatch(
-    matchId: MatchId, 
-    externalMatchId: string
-  ): Promise<{ created: number; updated: number; error?: string }> {
+  private async syncOddsForMatch(matchId: MatchId, externalId: string): Promise<Result<{ created: number, updated: number }>> {
     try {
-      const oddsResponse = await this.footballApiService.getOdds(parseInt(externalMatchId));
+      const oddsResponse = await this.footballApiService.getOdds(parseInt(externalId));
       
       if (!oddsResponse.response.length) {
-        return { created: 0, updated: 0, error: `No odds found for match ${externalMatchId}` };
+        return Result.failure(`No odds found for match ${externalId}`);
       }
 
       let created = 0;
@@ -92,7 +92,7 @@ export class SyncMatchOddsUseCase {
       const bookmaker = oddsData.bookmakers.find(b => b.id === 8); // Bet365
       
       if (!bookmaker) {
-        return { created: 0, updated: 0, error: 'No Bet365 odds found' };
+        return Result.failure('No Bet365 odds found');
       }
 
       // Process each bet type
@@ -104,8 +104,8 @@ export class SyncMatchOddsUseCase {
         
         if (existingMarket) {
           // Update existing market
-          const updated = this.updateMarketOdds(existingMarket, bet.values);
-          if (updated) {
+          const wasUpdated = this.updateMarketOdds(existingMarket, bet.values);
+          if (wasUpdated) {
             await this.marketsRepository.save(existingMarket);
             updated++;
           }
@@ -117,13 +117,9 @@ export class SyncMatchOddsUseCase {
         }
       }
 
-      return { created, updated };
+      return Result.success({ created, updated });
     } catch (error) {
-      return { 
-        created: 0, 
-        updated: 0, 
-        error: `Failed to fetch odds: ${error.message}` 
-      };
+      return Result.failure(`Failed to fetch odds: ${error.message}`);
     }
   }
 
@@ -216,7 +212,10 @@ export class SyncMatchOddsUseCase {
       [MarketType.ASIAN_HANDICAP]: 'Handicap Asiático',
       [MarketType.CORRECT_SCORE]: 'Placar Correto',
       [MarketType.FIRST_HALF_RESULT]: 'Resultado 1º Tempo',
-      [MarketType.DOUBLE_CHANCE]: 'Dupla Chance'
+      [MarketType.DOUBLE_CHANCE]: 'Dupla Chance',
+      [MarketType.TOTAL_GOALS]: 'Total de Gols',
+      [MarketType.ODD_EVEN_GOALS]: 'Par/Ímpar',
+      [MarketType.HALF_TIME_FULL_TIME]: 'Intervalo/Final'
     };
 
     return displayNames[marketType] || betName;

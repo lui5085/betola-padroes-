@@ -77,31 +77,45 @@ export class BetResponseDto {
 
   static from(bet: any): BetResponseDto {
     return {
-      id: bet.id,
-      userId: bet.userId,
-      type: bet.type,
-      amount: bet.amount,
-      potentialReturn: bet.potentialReturn,
-      status: bet.status,
+      id: bet.id?.value || bet.id,
+      userId: bet.userId?.value || bet.userId,
+      type: bet.type || 'SINGLE',
+      amount: bet.amount?.value || bet.amount,
+      potentialReturn: bet.potentialReturn || bet.potentialWin,
+      status: bet.status?.value || bet.status,
       selections: bet.selections.map((sel: any) => ({
-        matchId: sel.matchId,
-        marketId: sel.marketId,
-        marketType: sel.marketType,
-        marketName: sel.marketName,
-        optionName: sel.optionName,
-        odds: sel.odds,
-        status: sel.status,
-        homeTeam: sel.homeTeam,
-        awayTeam: sel.awayTeam,
-        kickoffTime: sel.kickoffTime,
-        matchStatus: sel.matchStatus,
-        homeScore: sel.homeScore,
-        awayScore: sel.awayScore
+        matchId: sel.matchId?.value || sel.matchId,
+        marketId: sel.marketId?.value || sel.marketId,
+        marketType: sel.marketType?.value || sel.marketType,
+        marketName: sel.marketName || this.getMarketName(sel.marketType?.value || sel.marketType),
+        optionName: sel.selection || sel.optionName,
+        odds: sel.odds?.value || sel.odds,
+        status: sel.status || 'PENDING',
+        homeTeam: sel.match?.homeTeam?.name || sel.homeTeam || '',
+        awayTeam: sel.match?.awayTeam?.name || sel.awayTeam || '',
+        kickoffTime: sel.match?.kickoffTime || sel.kickoffTime || '',
+        matchStatus: sel.match?.status || sel.matchStatus || 'SCHEDULED',
+        homeScore: sel.match?.homeScore || sel.homeScore,
+        awayScore: sel.match?.awayScore || sel.awayScore
       })),
-      totalOdds: bet.totalOdds,
-      createdAt: bet.createdAt,
-      settledAt: bet.settledAt,
+      totalOdds: bet.totalOdds?.value || bet.totalOdds,
+      createdAt: bet.createdAt?.value || bet.createdAt,
+      settledAt: bet.settledAt?.value || bet.settledAt,
       wonAmount: bet.wonAmount
     };
+  }
+
+  private static getMarketName(marketType: string): string {
+    const types: Record<string, string> = {
+      'MATCH_WINNER': 'Resultado Final',
+      'BOTH_TEAMS_SCORE': 'Ambas Marcam',
+      'OVER_UNDER_GOALS': 'Total de Gols',
+      'DOUBLE_CHANCE': 'Dupla Chance',
+      'CORRECT_SCORE': 'Placar Correto',
+      'FIRST_HALF_RESULT': 'Resultado 1º Tempo',
+      'ODD_EVEN_GOALS': 'Par/Ímpar',
+      'ASIAN_HANDICAP': 'Handicap Asiático'
+    };
+    return types[marketType] || marketType;
   }
 }

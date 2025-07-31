@@ -2,7 +2,7 @@ import { FootballApiConfig } from '@betola/core/modules/matches/domain/services/
 
 export const createFootballApiConfig = (): FootballApiConfig => {
   const apiKey = process.env.FOOTBALL_API_KEY;
-  const baseUrl = process.env.FOOTBALL_API_BASE_URL || 'https://v3.football.api-sports.io';
+  const baseUrl = process.env.FOOTBALL_API_BASE_URL || 'https://api.football-data.org/v4';
 
   if (!apiKey) {
     throw new Error('FOOTBALL_API_KEY environment variable is required');

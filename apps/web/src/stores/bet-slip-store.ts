@@ -1,5 +1,3 @@
-// apps/web/src/stores/bet-slip-store.ts
-
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -13,104 +11,71 @@ export interface BetSelection {
 }
 
 interface BetSlipState {
-  selections: BetSelection[]
-  amount: number
-  totalOdds: number
-  potentialWin: number
-  addSelection: (selection: BetSelection) => void
-  removeSelection: (matchId: string, marketType: string) => void
-  clearSelections: () => void
-  setAmount: (amount: number) => void
-  updateOdds: (matchId: string, marketType: string, newOdds: number) => void
+  selections: BetSelection[];
+  amount: string;
+  totalOdds: number;
+  potentialWin: number;
+  addSelection: (selection: BetSelection) => void;
+  removeSelection: (matchId: string, marketType: string) => void;
+  clearSelections: () => void;
+  setAmount: (amount: string) => void;
+  recalculateTotals: () => void;
 }
 
 export const useBetSlipStore = create<BetSlipState>()(
   persist(
-    (set, get) => ({
-      selections: [],
-      amount: 50, // Valor padrão
-      totalOdds: 1,
-      potentialWin: 0,
+    (set, get) => {
+  const recalculateTotals = () => {
+    const { selections, amount } = get();
+    const numericAmount = parseFloat(amount) || 0;
+    const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
+    const potentialWin = numericAmount * totalOdds;
+    set({ totalOdds, potentialWin });
+  };
 
-      addSelection: (selection) => {
-        set((state) => {
-          // Remove seleção anterior do mesmo jogo
-          const filtered = state.selections.filter(
-            s => s.matchId !== selection.matchId
-          )
-          
-          const newSelections = [...filtered, selection]
-          const totalOdds = calculateTotalOdds(newSelections)
-          const potentialWin = state.amount * totalOdds
-          
-          return {
-            selections: newSelections,
-            totalOdds,
-            potentialWin
-          }
-        })
-      },
-
-      removeSelection: (matchId, marketType) => {
-        set((state) => {
-          const newSelections = state.selections.filter(
-            s => !(s.matchId === matchId && s.marketType === marketType)
-          )
-          
-          const totalOdds = calculateTotalOdds(newSelections)
-          const potentialWin = state.amount * totalOdds
-          
-          return {
-            selections: newSelections,
-            totalOdds,
-            potentialWin
-          }
-        })
-      },
-
-      clearSelections: () => {
-        set({
-          selections: [],
-          totalOdds: 1,
-          potentialWin: 0
-        })
-      },
-
-      setAmount: (amount) => {
-        set((state) => ({
-          amount,
-          potentialWin: amount * state.totalOdds
-        }))
-      },
-
-      updateOdds: (matchId, marketType, newOdds) => {
-        set((state) => {
-          const newSelections = state.selections.map(s => 
-            s.matchId === matchId && s.marketType === marketType
-              ? { ...s, odds: newOdds }
-              : s
-          )
-          
-          const totalOdds = calculateTotalOdds(newSelections)
-          const potentialWin = state.amount * totalOdds
-          
-          return {
-            selections: newSelections,
-            totalOdds,
-            potentialWin
-          }
-        })
-      }
-    }),
+  return {
+    selections: [],
+    amount: '10.00',
+    totalOdds: 1,
+    potentialWin: 0,
+    addSelection: (selection: BetSelection) => {
+      set((state) => {
+        const filteredSelections = state.selections.filter(s => 
+          !(s.matchId === selection.matchId && s.marketType === selection.marketType)
+        );
+        
+        return {
+          selections: [...filteredSelections, selection],
+        };
+      });
+      recalculateTotals();
+    },
+    removeSelection: (matchId, marketType) => {
+      set((state) => ({
+        selections: state.selections.filter(s => !(s.matchId === matchId && s.marketType === marketType)),
+      }));
+      recalculateTotals();
+    },
+    setAmount: (amount) => {
+      set({ amount });
+      recalculateTotals();
+    },
+    clearSelections: () => {
+      set({ selections: [], amount: '10.00' });
+      recalculateTotals();
+    },
+    recalculateTotals,
+  };
+    },
     {
       name: 'bet-slip-storage',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         selections: state.selections,
-        amount: state.amount 
-      })
+        amount: state.amount,
+      }),
     }
   )
-)
+);
 
 function calculateTotalOdds(selections: BetSelection[]): number {
   if (selections.length === 0) return 1

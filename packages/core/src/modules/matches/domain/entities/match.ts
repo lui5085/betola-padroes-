@@ -82,13 +82,9 @@ export class Match extends BaseEntity<MatchId> {
   }
   
   isAvailableForBetting(): boolean {
-    if (!this._status.isScheduled()) {
-      return false;
-    }
-    
-    // Check if kickoff is at least 5 minutes in the future
-    const fiveMinutesFromNow = DateTime.now().addMinutes(5);
-    return this._kickoffTime.isAfter(fiveMinutesFromNow);
+    const now = new Date();
+    const kickoff = new Date(this._kickoffTime.value);
+    return this._status.value === MatchStatus.SCHEDULED && kickoff > now;
   }
   
   isFinished(): boolean {

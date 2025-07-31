@@ -14,6 +14,20 @@ export class TeamDto {
   logoUrl?: string;
 }
 
+export class MarketDto {
+  @ApiProperty()
+  id: string;
+  
+  @ApiProperty()
+  type: string;
+  
+  @ApiProperty()
+  name: string;
+  
+  @ApiProperty()
+  options: string; // JSON string
+}
+
 export class MatchResponseDto {
   @ApiProperty()
   id: string;
@@ -42,6 +56,9 @@ export class MatchResponseDto {
   @ApiProperty()
   season: string;
   
+  @ApiProperty({ type: [MarketDto] })
+  markets?: MarketDto[];
+  
   static from(match: any): MatchResponseDto {
     return {
       id: match.id,
@@ -52,7 +69,8 @@ export class MatchResponseDto {
       homeScore: match.homeScore,
       awayScore: match.awayScore,
       round: match.round,
-      season: match.season
+      season: match.season,
+      markets: match.markets || []
     };
   }
 }

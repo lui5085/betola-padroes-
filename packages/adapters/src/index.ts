@@ -8,4 +8,7 @@ export * from './auth/services/console-email-sender';
 
 export * from './betting/persistence/prisma-bets-repository';
 export * from './wallet/persistence/prisma-wallets-repository';
-export * from './matches/persistence/prisma-matches-repository'; 
+export * from './matches/persistence/prisma-matches-repository';
+export * from './leagues/persistence/prisma-leagues-repository';
+export * from './leagues/persistence/prisma-league-invites-repository';
+export * from './matches/football-api-client'; 

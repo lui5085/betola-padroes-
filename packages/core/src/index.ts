@@ -50,6 +50,14 @@ export * from './modules/leagues/application/use-cases/create-league';
 export * from './modules/leagues/application/use-cases/join-league';
 export * from './modules/leagues/application/use-cases/get-league-ranking';
 export * from './modules/leagues/application/use-cases/get-user-leagues';
+export * from './modules/leagues/application/use-cases/get-league-details';
+export * from './modules/leagues/application/use-cases/leave-league';
+export * from './modules/leagues/application/use-cases/update-member-stats';
+export * from './modules/leagues/application/use-cases/create-league-invite';
+export * from './modules/leagues/application/use-cases/invite-user-by-username';
+export * from './modules/leagues/application/use-cases/update-league';
+export * from './modules/leagues/domain/entities/league-invite';
+export * from './modules/leagues/domain/repositories/league-invites-repository';
 
 // Matches module
 export * from './modules/matches/domain/entities/match';
@@ -58,12 +66,22 @@ export * from './modules/matches/domain/value-objects/match-id';
 export * from './modules/matches/domain/value-objects/match-status';
 export * from './modules/matches/domain/value-objects/team-id';
 export * from './modules/matches/domain/repositories/matches-repository';
+export * from './modules/matches/domain/services/football-api-service';
+export * from './modules/matches/application/use-cases/sync-brasileirao-data';
+export * from './modules/matches/application/use-cases/sync-teams';
 
 // Wallet module
 export * from './modules/wallet/domain/entities/wallet';
 export * from './modules/wallet/domain/value-objects/wallet-id';
 export * from './modules/wallet/domain/value-objects/balance';
 export * from './modules/wallet/domain/repositories/wallets-repository';
+
+// Notifications module
+export * from './modules/notifications/domain/entities/notification';
+export * from './modules/notifications/domain/repositories/notifications-repository';
+export * from './modules/notifications/application/use-cases/create-notification';
+export * from './modules/notifications/application/use-cases/get-user-notifications';
+export * from './modules/notifications/application/use-cases/mark-notification-read';
 
 // Auth value objects (legacy location)
 export * from './modules/auth/domain/value-objects/user-id';

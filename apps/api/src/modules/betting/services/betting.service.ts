@@ -3,7 +3,7 @@ import { BetsRepository } from '@betola/core/modules/betting/domain/repositories
 import { MarketsRepository } from '@betola/core/modules/betting/domain/repositories/markets-repository';
 import { MatchesRepository } from '@betola/core/modules/matches/domain/repositories/matches-repository';
 import { WalletsRepository } from '@betola/core/modules/wallet/domain/repositories/wallets-repository';
-import { UserId } from '@betola/core/shared/types/user-id';
+import { UserId } from '@betola/core/modules/auth/domain/value-objects/user-id';
 import { MatchId } from '@betola/core/modules/matches/domain/value-objects/match-id';
 import { MarketId } from '@betola/core/modules/betting/domain/value-objects/market-id';
 
@@ -98,7 +98,7 @@ export class BettingService {
     const userBets = await this.betsRepository.findByUserId(new UserId(userId));
     
     const stats = {
-      totalBets: userBets.length,
+      totalBets: userBets.items.length,
       activeBets: 0,
       totalStaked: 0,
       totalWon: 0,
@@ -106,7 +106,7 @@ export class BettingService {
       roi: 0,
       winRate: 0,
       biggestWin: 0,
-      currentStreak: { type: 'none' as const, count: 0 }
+      currentStreak: { type: 'none' as 'win' | 'loss' | 'none', count: 0 }
     };
 
     let wonBets = 0;
@@ -114,18 +114,18 @@ export class BettingService {
     let streakCount = 0;
 
     // Sort bets by date for streak calculation
-    const sortedBets = [...userBets].sort((a, b) => 
+    const sortedBets = [...userBets.items].sort((a, b) => 
       b.createdAt.value.getTime() - a.createdAt.value.getTime()
     );
 
-    for (const bet of userBets) {
+    for (const bet of userBets.items) {
       stats.totalStaked += bet.amount.value;
 
       if (bet.status.isPending()) {
         stats.activeBets++;
       } else if (bet.status.isWon()) {
         wonBets++;
-        const winAmount = bet.calculateWinnings();
+        const winAmount = bet.potentialWin;
         stats.totalWon += winAmount;
         
         if (winAmount > stats.biggestWin) {
@@ -160,7 +160,7 @@ export class BettingService {
     // Calculate final stats
     stats.profit = stats.totalWon - stats.totalStaked;
     stats.roi = stats.totalStaked > 0 ? (stats.profit / stats.totalStaked) * 100 : 0;
-    stats.winRate = userBets.length > 0 ? (wonBets / userBets.length) * 100 : 0;
+    stats.winRate = userBets.items.length > 0 ? (wonBets / userBets.items.length) * 100 : 0;
 
     return stats;
   }

@@ -16,6 +16,10 @@ export class LeagueCode {
     }
     return new LeagueCode(code);
   }
+
+  static fromString(value: string): LeagueCode {
+    return new LeagueCode(value.toUpperCase());
+  }
   
   private isValid(value: string): boolean {
     return /^[A-Z0-9]{6}$/.test(value);

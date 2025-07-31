@@ -33,13 +33,13 @@ export class GetMatchMarketsUseCase {
       const response: GetMatchMarketsResponse = {
         markets: markets.map(market => ({
           id: market.id.value,
-          type: market.type.value,
+          type: market.type,
           name: market.name,
-          selections: market.selections.map(selection => ({
-            name: selection.name,
-            value: selection.value,
-            odds: selection.odds.value,
-            isActive: selection.isActive
+          selections: market.options.map(option => ({
+            name: option.name,
+            value: option.name,
+            odds: option.odds.value,
+            isActive: !option.isSuspended
           })),
           isActive: market.isActive
         }))

@@ -13,6 +13,11 @@ export class CreateLeagueDto {
   @Length(0, 500)
   description?: string;
   
+  @ApiPropertyOptional({ description: 'League image URL' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+  
   @ApiPropertyOptional({ description: 'Maximum number of members', minimum: 2, maximum: 500, default: 100 })
   @IsOptional()
   @IsNumber()

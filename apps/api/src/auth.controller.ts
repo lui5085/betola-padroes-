@@ -4,6 +4,7 @@ import {
   Body,
   UseGuards,
   Get,
+  Put,
   Req,
   Res,
   HttpStatus,
@@ -85,6 +86,9 @@ export class AuthController {
         email: user.email.value,
         username: user.username.value,
       },
+      // Include access token for WebSocket authentication
+      // Since WebSocket can't access httpOnly cookies
+      accessToken: accessToken,
     };
   }
 
@@ -135,7 +139,7 @@ export class AuthController {
     const refreshToken = request.cookies?.refreshToken;
     
     if (refreshToken) {
-      await this.authService.revokeRefreshToken(refreshToken);
+      await this.authService.revokeRefreshToken();
     }
 
     // Limpa cookies
@@ -148,14 +152,41 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getProfile(@CurrentUser() user: UserPayload) {
-    return this.authService.getProfile(user.id);
+    const profileResult = await this.authService.getProfile(user.id);
+    
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      },
+      profile: profileResult.profile,
+    };
+  }
+
+  @Put('me')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(
+    @CurrentUser() user: UserPayload,
+    @Body() updateData: { displayName?: string; bio?: string; favoriteTeam?: string; avatarUrl?: string }
+  ) {
+    const result = await this.authService.updateProfile(user.id, updateData);
+    
+    if (result.isFailure()) {
+      throw new HttpException(result.error, HttpStatus.BAD_REQUEST);
+    }
+
+    return {
+      message: 'Profile updated successfully',
+      profile: result.value,
+    };
   }
 
 
   @Post('forgot-password')
   async forgotPassword(@Body() body: { email: string }) {
     try {
-      await this.authService.requestPasswordReset(body.email);
+      await this.authService.requestPasswordReset();
       return { message: 'Password reset email sent' };
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);

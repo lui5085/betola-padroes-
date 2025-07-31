@@ -4,11 +4,11 @@
 import { useState } from 'react'
 import { User, Mail, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api/client'
 import { z } from 'zod'
 
-// Schema de validação
 const registerSchema = z.object({
   username: z.string()
     .min(3, 'Username deve ter no mínimo 3 caracteres')
@@ -39,7 +39,6 @@ export default function RegisterPage() {
     setGeneralError('')
     setSuccessMessage('')
 
-    // Valida dados
     try {
       const data = registerSchema.parse({ username, email, password })
       
@@ -47,15 +46,12 @@ export default function RegisterPage() {
       
       await apiClient.register(data as { username: string; email: string; password: string })
       
-      // Mostra mensagem de sucesso
       setSuccessMessage('Conta criada com sucesso! Verifique seu email para ativar sua conta.')
       
-      // Limpa formulário
       setUsername('')
       setEmail('')
       setPassword('')
       
-      // Redireciona após 3 segundos
       setTimeout(() => {
         router.push('/login')
       }, 3000)
@@ -78,28 +74,32 @@ export default function RegisterPage() {
   }
 
   return (
-    <div
-      className="min-h-screen w-full bg-cover bg-center flex items-center justify-center px-4"
-      style={{ backgroundImage: "url('/login-bg.png')" }}
+    <div 
+      className="min-h-screen w-full flex items-center justify-center px-4"
+      style={{ 
+        backgroundImage: "url('/login-bg.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
     >
-      {/* Container principal: logo + card */}
-      <div className="flex flex-col md:flex-row items-center justify-center gap-10 max-w-none w-full">
+      <div className="flex flex-col md:flex-row items-center justify-center gap-10 max-w-none w-full z-10 relative">
         
-        {/* Logo fora do card, à esquerda */}
         <div className="flex-shrink-0 flex justify-center md:justify-start">
-          <img
+          <Image
             src="/logo.svg"
             alt="Logo Betola"
-            className="w-96 md:w-[36rem] lg:w-[44rem]"
+            width={700}
+            height={200}
+            priority
+            className="w-96 md:w-[36rem] lg:w-[44rem] h-auto"
           />
         </div>
 
-        {/* Card de registro */}
         <form 
           onSubmit={handleSubmit}
           className="bg-[#FAFBEF] w-full max-w-md p-8 rounded-2xl shadow-md flex flex-col gap-6 justify-center"
         >
-          {/* Mensagem de sucesso */}
           {successMessage && (
             <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg flex items-center gap-2">
               <CheckCircle size={18} />
@@ -107,7 +107,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Erro geral */}
           {generalError && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-center gap-2">
               <AlertCircle size={18} />
@@ -115,9 +114,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Campos de entrada */}
           <div className="flex flex-col gap-4">
-            {/* Campo username */}
             <div>
               <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
                 <User size={18} className="mr-2 text-white" />
@@ -135,7 +132,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Campo email */}
             <div>
               <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
                 <Mail size={18} className="mr-2 text-white" />
@@ -153,7 +149,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Campo senha */}
             <div>
               <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
                 {showPassword ? (
@@ -192,14 +187,12 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          {/* Separador */}
           <div className="flex items-center justify-between gap-4">
             <hr className="flex-1 border-gray-400" />
             <span className="text-gray-600 text-sm">OU</span>
             <hr className="flex-1 border-gray-400" />
           </div>
 
-          {/* Link para login */}
           <p className="text-center text-sm">
             Já tem uma conta?{' '}
             <Link href="/login" className="text-green-900 font-medium underline">

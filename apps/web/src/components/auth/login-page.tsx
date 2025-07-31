@@ -20,7 +20,6 @@ import {
 } from "@betola/ui"
 import { API_URL } from '@/lib/api'
 
-// Main Login Component
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -63,9 +62,8 @@ const LoginPage: React.FC = () => {
         throw new Error(data.message || 'Login falhou.');
       }
       
-      Cookies.set('auth_token', data.accessToken, { expires: 1 }); // Expires in 1 day
+      Cookies.set('auth_token', data.accessToken, { expires: 1 });
 
-      // On success, redirect to the dashboard
       window.location.href = '/dashboard';
 
     } catch (error) {
@@ -80,7 +78,6 @@ const LoginPage: React.FC = () => {
   }
 
   const handleCreateAccount = () => {
-    // This should redirect to the registration page
     window.location.href = '/register';
   }
 

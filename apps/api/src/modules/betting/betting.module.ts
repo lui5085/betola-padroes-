@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { BettingController } from './controllers/betting.controller';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { PrismaClient } from '@prisma/client';
 
 // Use Cases
 import { PlaceBetUseCase } from '@betola/core/modules/betting/application/use-cases/place-bet';
@@ -22,13 +24,18 @@ import { PrismaBetsRepository } from '@betola/adapters/betting/persistence/prism
 import { PrismaMarketsRepository } from '@betola/adapters/betting/persistence/prisma-markets-repository';
 import { PrismaMatchesRepository } from '@betola/adapters/matches/persistence/prisma-matches-repository';
 import { PrismaWalletsRepository } from '@betola/adapters/wallet/persistence/prisma-wallets-repository';
+import { BetsRepository } from '@betola/core/modules/betting/domain/repositories/bets-repository';
+import { WalletsRepository } from '@betola/core/modules/wallet/domain/repositories/wallets-repository';
+import { MatchesRepository } from '@betola/core/modules/matches/domain/repositories/matches-repository';
+import { PlaceBetRequest } from '@betola/core';
 
 // External API
 import { FootballApiClient } from '@betola/adapters/matches/football-api-client';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
+    NotificationsModule
   ],
   controllers: [BettingController],
   providers: [
@@ -79,7 +86,41 @@ import { FootballApiClient } from '@betola/adapters/matches/football-api-client'
         }
       }),
       inject: [ConfigService]
-    }
+    },
+    {
+      provide: 'PlaceBetUseCase',
+      useFactory: (
+        prisma: PrismaService,
+        betsRepo: BetsRepository,
+        walletsRepo: WalletsRepository,
+        matchesRepo: MatchesRepository,
+      ) => {
+        // Wrapper que executa o caso de uso dentro de uma transação
+        const useCase = new PlaceBetUseCase(betsRepo, walletsRepo, matchesRepo);
+        const transactionalUseCase = {
+          execute: (request: PlaceBetRequest) => {
+            return prisma.$transaction(async (tx) => {
+              // Cria instâncias de repositórios com o cliente transacional
+              const transactionalBetsRepo = new PrismaBetsRepository(tx as PrismaClient);
+              const transactionalWalletsRepo = new PrismaWalletsRepository(tx as PrismaClient);
+
+              // Sobrescreve os repositórios no caso de uso com as versões transacionais
+              (useCase as any).betsRepository = transactionalBetsRepo;
+              (useCase as any).walletsRepository = transactionalWalletsRepo;
+              
+              return useCase.execute(request);
+            });
+          }
+        };
+        return transactionalUseCase;
+      },
+      inject: [
+        PrismaService,
+        'BetsRepository',
+        'WalletsRepository',
+        'MatchesRepository',
+      ],
+    },
   ],
   exports: [
     BettingService,

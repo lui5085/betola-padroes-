@@ -11,6 +11,7 @@ import { BetSelection } from '../../domain/entities/bet-selection';
 import { BetsRepository } from '../../domain/repositories/bets-repository';
 import { WalletsRepository } from '../../../wallet/domain/repositories/wallets-repository';
 import { MatchesRepository } from '../../../matches/domain/repositories/matches-repository';
+import { Money } from '../../../../shared/domain/value-objects/money';
 
 export interface PlaceBetRequest {
   userId: string;
@@ -33,91 +34,50 @@ export class PlaceBetUseCase implements UseCase<PlaceBetRequest, PlaceBetRespons
   constructor(
     private readonly betsRepository: BetsRepository,
     private readonly walletsRepository: WalletsRepository,
-    private readonly matchesRepository: MatchesRepository
+    private readonly matchesRepository: MatchesRepository,
   ) {}
-  
+
   async execute(request: PlaceBetRequest): Promise<Result<PlaceBetResponse>> {
     try {
-      // Validate user ID
       const userId = UserId.fromString(request.userId);
-      
-      // Validate bet amount
       const betAmount = new BetAmount(request.amount);
-      
-      // Get user's wallet
+
       const wallet = await this.walletsRepository.findByUserId(userId);
-      if (!wallet) {
-        return Result.failure('User wallet not found');
+      if (!wallet || !wallet.canAfford(betAmount)) {
+        return Result.failure('Wallet not found or insufficient balance');
       }
-      
-      // Check if user has sufficient balance
-      if (!wallet.balance.canAfford(betAmount)) {
-        return Result.failure('Insufficient balance');
+
+      for (const s of request.selections) {
+        const match = await this.matchesRepository.findById(MatchId.fromString(s.matchId));
+        if (!match || new Date(match.kickoffTime.value) <= new Date()) {
+          return Result.failure(`Match ${s.matchId} is not available for betting.`);
+        }
       }
-      
-      // Validate selections
-      if (request.selections.length === 0) {
-        return Result.failure('At least one selection is required');
-      }
-      
-      if (request.selections.length > 10) {
-        return Result.failure('Maximum 10 selections allowed');
-      }
-      
-      // Create bet ID
+
       const betId = BetId.create();
+      const selections = request.selections.map(s => new BetSelection({
+        betId,
+        matchId: MatchId.fromString(s.matchId),
+        marketType: new MarketTypeVO(s.marketType as any),
+        selection: s.selection,
+        odds: new Odds(s.odds)
+      }));
+
+      const bet = new Bet({ id: betId, userId, selections, amount: betAmount });
       
-      // Create bet selections
-      const selections: BetSelection[] = [];
-      
-      for (const selectionData of request.selections) {
-        // Validate match exists and is available for betting
-        const matchId = MatchId.fromString(selectionData.matchId);
-        const match = await this.matchesRepository.findById(matchId);
-        
-        if (!match) {
-          return Result.failure(`Match ${selectionData.matchId} not found`);
-        }
-        
-        if (!match.isAvailableForBetting()) {
-          return Result.failure(`Match ${selectionData.matchId} is not available for betting`);
-        }
-        
-        // Create selection
-        const selection = new BetSelection({
-          betId,
-          matchId,
-          marketType: new MarketTypeVO(selectionData.marketType as any),
-          selection: selectionData.selection,
-          odds: new Odds(selectionData.odds)
-        });
-        
-        selections.push(selection);
-      }
-      
-      // Create bet
-      const bet = new Bet({
-        id: betId,
-        userId,
-        selections,
-        amount: betAmount
-      });
-      
-      // Deduct amount from wallet
-      wallet.deductBetAmount(betAmount);
-      
-      // Save bet and wallet
+      wallet.debit(betAmount);
+
+      // A camada da API será responsável pela transação
       await this.betsRepository.save(bet);
-      await this.walletsRepository.save(wallet);
-      
+      await this.walletsRepository.update(wallet);
+
       return Result.success({
         betId: bet.id.value,
         totalOdds: bet.totalOdds.value,
-        potentialWin: bet.potentialWin
+        potentialWin: bet.potentialWin,
       });
-      
     } catch (error) {
-      return Result.failure(error instanceof Error ? error.message : 'Unknown error');
+      return Result.failure(error instanceof Error ? error.message : 'An error occurred.');
     }
   }
 }

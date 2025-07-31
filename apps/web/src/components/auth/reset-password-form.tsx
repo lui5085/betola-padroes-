@@ -60,7 +60,6 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token }) =
         throw new Error(errorData.message || 'Falha ao redefinir a senha.');
       }
 
-      // Redirect to login with a success message
       window.location.href = '/login?reset=success';
       
     } catch (error) {

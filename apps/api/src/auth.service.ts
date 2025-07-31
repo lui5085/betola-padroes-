@@ -85,67 +85,77 @@ export class AuthService {
 
     const { user } = result.value;
 
+    // Get additional user data including isAdmin from database
+    const userId = typeof user.id === 'string' ? user.id : user.id.value;
+    const userRecord = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+
     // Gera tokens
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user);
 
-    // Salva refresh token no banco
-    await this.saveRefreshToken(user.id.value, refreshToken);
+    // Prepare user object with admin status
+    const userResponse = {
+      id: userId,
+      email: user.email.value || user.email,
+      username: user.username.value || user.username,
+      isAdmin: userRecord?.isAdmin || false,
+      profile: (userRecord as any)?.profile ? {
+        id: (userRecord as any).profile.id,
+        displayName: (userRecord as any).profile.displayName,
+        bio: (userRecord as any).profile.bio,
+        avatarUrl: (userRecord as any).profile.avatarUrl,
+        favoriteTeam: (userRecord as any).profile.favoriteTeam,
+      } : null,
+    };
 
     return Result.success({
       accessToken,
       refreshToken,
-      user,
+      user: userResponse,
     });
   }
 
   async refreshToken(refreshToken: string): Promise<Result<RefreshTokenResponse>> {
     try {
-      // Verifica se o refresh token existe e é válido
-      const storedToken = await (this.prismaService as any).refreshToken.findUnique({
-        where: { token: refreshToken },
-        include: { user: true },
-      });
-
-      if (!storedToken || storedToken.revokedAt) {
+      // Verifica e decodifica o refresh token JWT
+      const decoded = this.jwtService.verify(refreshToken) as any;
+      
+      if (!decoded.sub || decoded.type !== 'refresh') {
         return Result.failure('Invalid refresh token');
       }
 
-      if (new Date() > storedToken.expiresAt) {
-        return Result.failure('Refresh token expired');
-      }
-
-      // Revoga o token antigo
-      await (this.prismaService as any).refreshToken.update({
-        where: { id: storedToken.id },
-        data: { revokedAt: new Date() },
+      // Busca o usuário
+      const user = await this.prismaService.user.findUnique({
+        where: { id: decoded.sub }
       });
 
-      // Gera novos tokens
-      const accessToken = await this.generateAccessToken(storedToken.user);
-      const newRefreshToken = await this.generateRefreshToken(storedToken.user);
+      if (!user) {
+        return Result.failure('User not found');
+      }
 
-      // Salva novo refresh token
-      await this.saveRefreshToken(storedToken.userId, newRefreshToken);
+      // Gera novos tokens
+      const accessToken = await this.generateAccessToken(user);
+      const newRefreshToken = await this.generateRefreshToken(user);
 
       return Result.success({
         accessToken,
         newRefreshToken,
       });
     } catch (error) {
-      return Result.failure('Failed to refresh token');
+      return Result.failure('Invalid or expired refresh token');
     }
   }
 
-  async revokeRefreshToken(refreshToken: string): Promise<void> {
-    await (this.prismaService as any).refreshToken.updateMany({
-      where: { token: refreshToken },
-      data: { revokedAt: new Date() },
-    });
+  async revokeRefreshToken(): Promise<void> {
+    // Com JWT stateless, não precisamos revogar tokens no banco
+    // Eles expiram automaticamente baseado no tempo configurado
   }
 
 
-  async requestPasswordReset(email: string) {
+  async requestPasswordReset(): Promise<void> {
     // Password reset functionality temporarily disabled
     throw new Error('Password reset functionality is temporarily disabled');
   }
@@ -163,34 +173,66 @@ export class AuthService {
     }
   }
 
+  async updateProfile(userId: string, updateData: { displayName?: string; bio?: string; favoriteTeam?: string; avatarUrl?: string }) {
+    try {
+      // For now, return a simple success response
+      // In a full implementation, you would create an UpdateProfileUseCase
+      const currentProfile = await this.getProfileUseCase.execute(userId);
+      
+      // Update the profile in the database directly for now
+      const updatedProfile = await this.prismaService.profile.update({
+        where: { userId },
+        data: {
+          displayName: updateData.displayName || currentProfile.profile.displayName,
+          bio: updateData.bio || currentProfile.profile.bio,
+          favoriteTeam: updateData.favoriteTeam || currentProfile.profile.favoriteTeam,
+          avatarUrl: updateData.avatarUrl || currentProfile.profile.avatarUrl,
+          updatedAt: new Date(),
+        },
+      });
+
+      return Result.success(updatedProfile);
+    } catch (error) {
+      return Result.failure('Failed to update profile');
+    }
+  }
+
   private async generateAccessToken(user: any): Promise<string> {
+    const userId = user.id?.value || user.id;
+    const userEmail = user.email?.value || user.email;
+    const userName = user.username?.value || user.username;
+
+    if (!userId) {
+      throw new Error('Cannot generate access token: user ID is missing');
+    }
+
     const payload = {
-      sub: user.id.value,
-      email: user.email.value,
-      username: user.username.value,
+      sub: userId,
+      email: userEmail,
+      username: userName,
     };
 
     return this.jwtService.sign(payload, {
-      expiresIn: '15m',
-      secret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      secret: process.env.JWT_SECRET,
     });
   }
 
   private async generateRefreshToken(user: any): Promise<string> {
-    const token = randomBytes(32).toString('hex');
-    return token;
-  }
+    const userId = user.id?.value || user.id;
 
-  private async saveRefreshToken(userId: string, token: string): Promise<void> {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias
+    if (!userId) {
+      throw new Error('Cannot generate refresh token: user ID is missing');
+    }
 
-    await (this.prismaService as any).refreshToken.create({
-      data: {
-        token,
-        userId,
-        expiresAt,
-      },
+    const payload = {
+      sub: userId,
+      type: 'refresh'
+    };
+
+    return this.jwtService.sign(payload, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      secret: process.env.JWT_SECRET,
     });
   }
 }

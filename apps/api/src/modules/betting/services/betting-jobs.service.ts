@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SyncBrasileraoDataUseCase } from '@betola/core/modules/matches/application/use-cases/sync-brasileirao-data';
-import { SyncMatchOddsUseCase } from '@betola/core/modules/betting/application/use-cases/sync-match-odds';
+import { SyncMatchOddsUseCase } from '../use-cases/sync-match-odds.use-case';
 import { SettleBetsUseCase } from '@betola/core/modules/betting/application/use-cases/settle-bets';
 import { SyncTeamsUseCase } from '@betola/core/modules/matches/application/use-cases/sync-teams';
 
@@ -24,7 +24,7 @@ export class BettingJobsService {
     try {
       const result = await this.syncTeamsUseCase.execute();
       
-      if (result.isSuccess()) {
+      if (result.isSuccess) {
         this.logger.log(`Teams sync completed: ${JSON.stringify(result.value)}`);
       } else {
         this.logger.error(`Teams sync failed: ${result.error}`);
@@ -42,7 +42,7 @@ export class BettingJobsService {
     try {
       const result = await this.syncBrasileraoDataUseCase.execute();
       
-      if (result.isSuccess()) {
+      if (result.isSuccess) {
         this.logger.log(`Match sync completed: ${JSON.stringify(result.value)}`);
       } else {
         this.logger.error(`Match sync failed: ${result.error}`);
@@ -60,7 +60,7 @@ export class BettingJobsService {
     try {
       const result = await this.syncMatchOddsUseCase.execute();
       
-      if (result.isSuccess()) {
+      if (result.isSuccess) {
         this.logger.log(`Odds sync completed: ${JSON.stringify(result.value)}`);
       } else {
         this.logger.error(`Odds sync failed: ${result.error}`);
@@ -78,10 +78,13 @@ export class BettingJobsService {
     try {
       const result = await this.settleBetsUseCase.execute();
       
-      if (result.isSuccess()) {
-        const { betsSettled, betsWon, totalWinningsDistributed } = result.value;
-        if (betsSettled > 0) {
-          this.logger.log(`Bet settlement completed: ${betsSettled} bets settled, ${betsWon} won, ${totalWinningsDistributed} betoletas distributed`);
+      if (result.isSuccess) {
+        const { settledCount, errors } = result.value;
+        if (settledCount > 0) {
+          this.logger.log(`Bet settlement completed: ${settledCount} bets settled`);
+          if (errors.length > 0) {
+            this.logger.warn(`Settlement errors: ${errors.join(', ')}`);
+          }
         }
       } else {
         this.logger.error(`Bet settlement failed: ${result.error}`);

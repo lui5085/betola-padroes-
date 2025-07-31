@@ -28,40 +28,80 @@ export class SyncBrasileraoDataUseCase {
       // Step 1: Get Brasileirao league data
       const leagueResponse = await this.footballApiService.getBrasileirao();
       
-      if (!leagueResponse.response.length) {
+      if (!leagueResponse.id) {
         return Result.failure('Brasileirao league not found');
       }
 
-      const league = leagueResponse.response[0];
-      // Use 2023 season as free plan only has access to 2021-2023
-      const availableSeason = league.seasons.find(s => s.year === 2023) || league.seasons[league.seasons.length - 1];
+      const league = leagueResponse;
+      // Get current year for the season
+      const currentYear = new Date().getFullYear();
+      
+      // Look for current season, fallback to most recent season
+      const availableSeason = league.seasons.find(s => s.startDate.includes(currentYear.toString())) || 
+                             league.seasons[league.seasons.length - 1];
       
       if (!availableSeason) {
         return Result.failure('No available Brasileirao season found');
       }
 
-      const leagueId = league.league.id;
-      const season = availableSeason.year;
+      const leagueId = league.id;
+      const season = currentYear;
 
-      // Step 2: Get current round
-      const roundResponse = await this.footballApiService.getCurrentRound(leagueId, season);
-      const currentRound = roundResponse.response[0];
-
-      if (!currentRound) {
-        return Result.failure('Current round not found');
+      // Step 2: Get all fixtures for current season to find the next matchday
+      const fixturesResponse = await this.footballApiService.getFixtures(leagueId, season);
+      
+      if (!fixturesResponse.matches || fixturesResponse.matches.length === 0) {
+        return Result.failure('No fixtures found for current season');
       }
 
-      // Step 3: Get fixtures for current round
-      const fixturesResponse = await this.footballApiService.getFixtures(leagueId, season, currentRound);
+      // Find the next matchday by looking for upcoming matches
+      const now = new Date();
+      const upcomingMatches = fixturesResponse.matches.filter(match => 
+        new Date(match.utcDate) > now && (match.status === 'SCHEDULED' || match.status === 'TIMED')
+      );
+      
+      if (upcomingMatches.length === 0) {
+        return Result.failure('No upcoming matches found');
+      }
+
+      // Group upcoming matches by matchday and find the next complete round
+      const matchdayGroups = new Map();
+      upcomingMatches.forEach(match => {
+        if (!matchdayGroups.has(match.matchday)) {
+          matchdayGroups.set(match.matchday, []);
+        }
+        matchdayGroups.get(match.matchday).push(match);
+      });
+
+      // Find the next matchday with the most matches (likely a complete round)
+      let nextMatchday = null;
+      let maxMatches = 0;
+      
+      for (const [matchday, matches] of matchdayGroups.entries()) {
+        const timedMatches = matches.filter(m => m.status === 'TIMED').length;
+        if (timedMatches > maxMatches && timedMatches >= 5) { // At least 5 matches in a round
+          maxMatches = timedMatches;
+          nextMatchday = matchday;
+        }
+      }
+
+      // If no good round found, fall back to the earliest matchday
+      if (!nextMatchday) {
+        nextMatchday = Math.min(...upcomingMatches.map(match => match.matchday));
+      }
+
+      const nextRoundMatches = fixturesResponse.matches.filter(match => 
+        match.matchday === nextMatchday && (match.status === 'SCHEDULED' || match.status === 'TIMED')
+      );
       
       let matchesSynced = 0;
       let matchesUpdated = 0;
       const errors: string[] = [];
 
-      // Step 4: Process each fixture
-      for (const fixture of fixturesResponse.response) {
+      // Step 3: Process each fixture from the next matchday
+      for (const fixture of nextRoundMatches) {
         try {
-          const existingMatch = await this.matchesRepository.findByExternalId(fixture.fixture.id.toString());
+          const existingMatch = await this.matchesRepository.findByExternalId(fixture.id.toString());
           
           if (existingMatch) {
             // Update existing match
@@ -78,7 +118,7 @@ export class SyncBrasileraoDataUseCase {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          errors.push(`Failed to process fixture ${fixture.fixture.id}: ${errorMessage}`);
+          errors.push(`Failed to process fixture ${fixture.id}: ${errorMessage}`);
         }
       }
 
@@ -95,18 +135,16 @@ export class SyncBrasileraoDataUseCase {
   }
 
   private createMatchFromFixture(fixture: any, season: string): Match {
-    const roundNumber = this.extractRoundNumber(fixture.league.round);
-    
     return new Match({
       id: MatchId.create(),
-      externalId: fixture.fixture.id.toString(),
-      homeTeamId: new TeamId(fixture.teams.home.id.toString()),
-      awayTeamId: new TeamId(fixture.teams.away.id.toString()),
-      kickoffTime: new DateTime(fixture.fixture.date),
-      status: this.mapApiStatusToMatchStatus(fixture.fixture.status.short),
-      homeScore: fixture.goals.home,
-      awayScore: fixture.goals.away,
-      round: roundNumber,
+      externalId: fixture.id.toString(),
+      homeTeamId: new TeamId(fixture.homeTeam.id.toString()),
+      awayTeamId: new TeamId(fixture.awayTeam.id.toString()),
+      kickoffTime: new DateTime(fixture.utcDate),
+      status: this.mapApiStatusToMatchStatus(fixture.status),
+      homeScore: fixture.score?.fullTime?.home || null,
+      awayScore: fixture.score?.fullTime?.away || null,
+      round: fixture.matchday,
       season
     });
   }
@@ -115,7 +153,7 @@ export class SyncBrasileraoDataUseCase {
     let updated = false;
 
     // Update status
-    const newStatus = this.mapApiStatusToMatchStatus(fixture.fixture.status.short);
+    const newStatus = this.mapApiStatusToMatchStatus(fixture.status);
     if (!match.status.equals(newStatus)) {
       if (newStatus.isLive()) {
         match.markAsLive();
@@ -126,8 +164,8 @@ export class SyncBrasileraoDataUseCase {
     }
 
     // Update scores
-    const newHomeScore = fixture.goals.home;
-    const newAwayScore = fixture.goals.away;
+    const newHomeScore = fixture.score?.fullTime?.home;
+    const newAwayScore = fixture.score?.fullTime?.away;
     
     if (newHomeScore !== null && newAwayScore !== null) {
       if (match.homeScore !== newHomeScore || match.awayScore !== newAwayScore) {
@@ -138,36 +176,24 @@ export class SyncBrasileraoDataUseCase {
 
     return updated;
   }
-  v3.football.api-sports.io
+
   private mapApiStatusToMatchStatus(apiStatus: string): MatchStatusVO {
     switch (apiStatus) {
-      case 'NS': // Not Started
-      case 'TBD': // To Be Determined
+      case 'SCHEDULED': // Not Started
+      case 'TIMED': // Timed match
         return new MatchStatusVO(MatchStatus.SCHEDULED);
-      case '1H': // First Half
-      case 'HT': // Half Time
-      case '2H': // Second Half
-      case 'ET': // Extra Time
-      case 'P': // Penalty
+      case 'IN_PLAY': // First Half, Second Half
+      case 'PAUSED': // Half Time
         return new MatchStatusVO(MatchStatus.LIVE);
-      case 'FT': // Full Time
-      case 'AET': // After Extra Time
-      case 'PEN': // Penalty
+      case 'FINISHED': // Full Time
         return new MatchStatusVO(MatchStatus.FINISHED);
-      case 'SUSP': // Suspended
-      case 'INT': // Interrupted
-        return new MatchStatusVO(MatchStatus.POSTPONED);
-      case 'PST': // Postponed
-      case 'CANC': // Cancelled
+      case 'SUSPENDED': // Suspended
+      case 'POSTPONED': // Postponed
+      case 'CANCELLED': // Cancelled
         return new MatchStatusVO(MatchStatus.POSTPONED);
       default:
         return new MatchStatusVO(MatchStatus.SCHEDULED);
     }
   }
 
-  private extractRoundNumber(roundString: string): number {
-    // Extract number from strings like "Regular Season - 15"
-    const match = roundString.match(/(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-  }
 }

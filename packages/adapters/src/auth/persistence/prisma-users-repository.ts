@@ -19,8 +19,8 @@ export class PrismaUsersRepository implements IUsersRepository {
         email: user.email.value,
         username: user.username.value,
         passwordHash: user.passwordHash.value,
-        passwordResetToken: user.passwordResetToken?.value,
-        passwordResetExpires: user.passwordResetExpires?.value,
+        resetPasswordToken: user.passwordResetToken?.value,
+        resetPasswordExpiry: user.passwordResetExpires?.value,
         createdAt: user.createdAt.value,
         updatedAt: user.updatedAt.value,
       },
@@ -36,8 +36,8 @@ export class PrismaUsersRepository implements IUsersRepository {
           email: user.email.value,
           username: user.username.value,
           passwordHash: user.passwordHash.value,
-            passwordResetToken: user.passwordResetToken?.value,
-          passwordResetExpires: user.passwordResetExpires?.value,
+          resetPasswordToken: user.passwordResetToken?.value,
+          resetPasswordExpiry: user.passwordResetExpires?.value,
           createdAt: user.createdAt.value,
           updatedAt: user.updatedAt.value,
         },
@@ -51,7 +51,6 @@ export class PrismaUsersRepository implements IUsersRepository {
           displayName: profile.displayName,
           avatarUrl: profile.avatarUrl,
           bio: profile.bio,
-          favoriteTeam: profile.favoriteTeam,
           createdAt: profile.createdAt.value,
           updatedAt: profile.updatedAt.value,
         },
@@ -99,7 +98,7 @@ export class PrismaUsersRepository implements IUsersRepository {
 
   async findByPasswordResetToken(token: Token): Promise<User | null> {
     const user = await this.prisma.user.findFirst({
-      where: { passwordResetToken: token.value },
+      where: { resetPasswordToken: token.value },
     });
 
     if (!user) return null;
@@ -114,8 +113,8 @@ export class PrismaUsersRepository implements IUsersRepository {
         email: user.email.value,
         username: user.username.value,
         passwordHash: user.passwordHash.value,
-        passwordResetToken: user.passwordResetToken?.value,
-        passwordResetExpires: user.passwordResetExpires?.value,
+        resetPasswordToken: user.passwordResetToken?.value,
+        resetPasswordExpiry: user.passwordResetExpires?.value,
         updatedAt: user.updatedAt.value,
         // Campos adicionais para rate limiting (adicionar ao schema)
         // loginAttempts: user.loginAttempts,
@@ -131,8 +130,8 @@ export class PrismaUsersRepository implements IUsersRepository {
         email: new Email(user.email),
         username: new Username(user.username),
         passwordHash: new HashedPassword(user.passwordHash),
-        passwordResetToken: user.passwordResetToken ? new Token(user.passwordResetToken) : null,
-        passwordResetExpires: user.passwordResetExpires ? new Timestamp(user.passwordResetExpires) : null,
+        passwordResetToken: user.resetPasswordToken ? new Token(user.resetPasswordToken) : null,
+        passwordResetExpires: user.resetPasswordExpiry ? new Timestamp(user.resetPasswordExpiry) : null,
         // loginAttempts: user.loginAttempts || 0,
         // lastLoginAttempt: user.lastLoginAttempt ? new Timestamp(user.lastLoginAttempt) : null,
         // lockedUntil: user.lockedUntil ? new Timestamp(user.lockedUntil) : null,

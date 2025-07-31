@@ -11,28 +11,32 @@ export class PrismaMarketsRepository implements MarketsRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async save(market: Market): Promise<void> {
-    const data = {
-      id: market.id.value,
-      matchId: market.matchId.value,
-      type: market.type,
-      name: market.name,
-      options: JSON.stringify(market.options.map(opt => ({
-        name: opt.name,
-        odds: opt.odds.value,
-        isSuspended: opt.isSuspended || false
-      }))),
-      isActive: market.isActive,
-      externalId: market.externalId,
-      createdAt: market.createdAt?.value,
-      updatedAt: market.updatedAt?.value
-    };
+    const optionsData = JSON.stringify(market.options.map(opt => ({
+      name: opt.name,
+      odds: opt.odds.value,
+      isSuspended: opt.isSuspended || false
+    })));
 
     await this.prisma.market.upsert({
       where: { id: market.id.value },
-      create: data,
+      create: {
+        id: market.id.value,
+        matchId: market.matchId.value,
+        type: market.type,
+        name: market.name,
+        options: optionsData,
+        isActive: market.isActive,
+        externalId: market.externalId,
+        createdAt: market.createdAt?.value,
+        updatedAt: market.updatedAt?.value
+      },
       update: {
-        ...data,
-        createdAt: undefined // Don't update createdAt
+        type: market.type,
+        name: market.name,
+        options: optionsData,
+        isActive: market.isActive,
+        externalId: market.externalId,
+        updatedAt: market.updatedAt?.value
       }
     });
   }
@@ -75,6 +79,10 @@ export class PrismaMarketsRepository implements MarketsRepository {
     });
 
     return markets.map(market => this.toDomain(market));
+  }
+
+  async findActiveMarketsForMatch(matchId: MatchId): Promise<Market[]> {
+    return this.findActiveByMatch(matchId);
   }
 
   async update(market: Market): Promise<void> {

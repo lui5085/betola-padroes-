@@ -18,6 +18,10 @@ export class DateTime {
   static fromTimestamp(timestamp: number): DateTime {
     return new DateTime(new Date(timestamp));
   }
+
+  static fromDate(date: Date): DateTime {
+    return new DateTime(date);
+  }
   
   get value(): Date {
     return new Date(this._value);

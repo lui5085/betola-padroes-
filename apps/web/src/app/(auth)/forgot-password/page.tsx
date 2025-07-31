@@ -14,10 +14,8 @@ export default function ResetPasswordPage() {
       className="min-h-screen w-full bg-cover bg-center flex items-center justify-center px-4"
       style={{ backgroundImage: "url('/login-bg.png')" }}
     >
-      {/* Container principal: logo + card */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-10 max-w-none w-full">
         
-        {/* Logo fora do card, à esquerda */}
         <div className="flex-shrink-0 flex justify-center md:justify-start">
           <img
             src="/logo.svg"
@@ -26,9 +24,7 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-        {/* Card de redefinição de senha */}
         <div className="bg-[#FAFBEF] w-full max-w-md p-8 rounded-2xl shadow-md flex flex-col gap-6 justify-center">
-          {/* Campo nova senha */}
           <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
             <Eye size={18} className="mr-2 text-white" />
             <input
@@ -40,7 +36,6 @@ export default function ResetPasswordPage() {
             />
           </div>
 
-          {/* Campo confirmar senha */}
           <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
             <Eye size={18} className="mr-2 text-white" />
             <input
@@ -52,15 +47,12 @@ export default function ResetPasswordPage() {
             />
           </div>
 
-          {/* Botão Redefinir Senha */}
           <button className="bg-green-700 text-white py-3 rounded-full font-semibold hover:bg-green-800 transition-all">
             REDEFINIR SENHA
           </button>
 
-          {/* Separador simples */}
           <hr className="border-gray-400" />
 
-          {/* Link para voltar ao login */}
           <p className="text-center text-sm">
             <Link href="/login" className="text-green-900 font-medium underline">
               Voltar ao Login

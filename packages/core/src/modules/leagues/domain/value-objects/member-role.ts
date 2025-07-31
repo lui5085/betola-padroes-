@@ -27,6 +27,14 @@ export class MemberRoleVO {
     return this.isOwner() || this.isAdmin();
   }
   
+  canInviteMembers(): boolean {
+    return this.isOwner() || this.isAdmin();
+  }
+  
+  canKickMembers(): boolean {
+    return this.isOwner() || this.isAdmin();
+  }
+  
   equals(other: MemberRoleVO): boolean {
     return this._value === other._value;
   }

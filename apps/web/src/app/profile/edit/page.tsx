@@ -2,8 +2,10 @@ import ProfileEditForm from '@/components/profile/profile-edit-form';
 
 export default function ProfileEditPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <ProfileEditForm />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <ProfileEditForm />
+      </div>
     </div>
   );
 } 

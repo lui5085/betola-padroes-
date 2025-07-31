@@ -1,3 +1,5 @@
+// apps/web/src/app/(app)/minhas-apostas/page.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,20 +8,20 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Clock, Trophy, TrendingUp, CheckCircle, XCircle, Clock3 } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 interface BetSelection {
   matchId: string
   marketType: string
   selection: string
   odds: number
-  match: {
-    homeTeam: string
-    awayTeam: string
-    kickoffTime: string
-    homeScore?: number
-    awayScore?: number
-    status: string
-  }
+  homeTeam?: string
+  awayTeam?: string
+  kickoffTime?: string
+  matchStatus?: string
+  homeScore?: number
+  awayScore?: number
 }
 
 interface Bet {
@@ -27,7 +29,7 @@ interface Bet {
   selections: BetSelection[]
   amount: number
   totalOdds: number
-  potentialWin: number
+  potentialReturn: number
   status: 'PENDING' | 'WON' | 'LOST' | 'CANCELLED'
   createdAt: string
   settledAt?: string
@@ -37,36 +39,58 @@ interface WalletData {
   balance: number
   totalWon: number
   totalLost: number
+  netProfit: number
 }
 
 export default function MinhasApostasPage() {
   const [bets, setBets] = useState<Bet[]>([])
   const [wallet, setWallet] = useState<WalletData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'won' | 'lost'>('all')
+  const [filter, setFilter] = useState<'all' | 'PENDING' | 'WON' | 'LOST'>('all')
+  const [stats, setStats] = useState<any>(null)
 
   useEffect(() => {
-    loadUserBets()
-    loadWallet()
+    loadData()
   }, [])
+
+  const loadData = async () => {
+    try {
+      await Promise.all([
+        loadUserBets(),
+        loadWallet(),
+        loadStats()
+      ])
+    } catch (error) {
+      console.error('Failed to load data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadUserBets = async () => {
     try {
       const response = await apiClient.getUserBets()
-      setBets((response as any)?.bets || [])
+      setBets(response || [])
     } catch (error) {
       console.error('Failed to load user bets:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
   const loadWallet = async () => {
     try {
       const response = await apiClient.getUserWallet()
-      setWallet(response as WalletData)
+      setWallet(response)
     } catch (error) {
       console.error('Failed to load wallet:', error)
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      const response = await apiClient.getUserStats()
+      setStats(response)
+    } catch (error) {
+      console.error('Failed to load stats:', error)
     }
   }
 
@@ -85,79 +109,24 @@ export default function MinhasApostasPage() {
     }
   }
 
-  const getMarketIcon = (marketType: string) => {
-    switch (marketType) {
-      case 'MATCH_WINNER':
-        return <Trophy className="w-4 h-4" />
-      case 'BOTH_TEAMS_SCORE':
-        return <TrendingUp className="w-4 h-4" />
-      default:
-        return null
-    }
-  }
-
   const getMarketName = (marketType: string) => {
-    switch (marketType) {
-      case 'MATCH_WINNER':
-        return 'Resultado Final'
-      case 'BOTH_TEAMS_SCORE':
-        return 'Ambas Marcam'
-      case 'OVER_UNDER_GOALS':
-        return 'Total de Gols'
-      default:
-        return marketType
+    const types: Record<string, string> = {
+      'MATCH_WINNER': 'Resultado Final',
+      'BOTH_TEAMS_SCORE': 'Ambas Marcam',
+      'OVER_UNDER_GOALS': 'Total de Gols',
+      'DOUBLE_CHANCE': 'Dupla Chance',
+      'CORRECT_SCORE': 'Placar Correto',
+      'FIRST_HALF_RESULT': 'Resultado 1º Tempo',
+      'ODD_EVEN_GOALS': 'Par/Ímpar',
+      'ASIAN_HANDICAP': 'Handicap Asiático'
     }
-  }
-
-  const getSelectionName = (marketType: string, selection: string) => {
-    if (marketType === 'MATCH_WINNER') {
-      switch (selection) {
-        case 'Home': return 'Casa'
-        case 'Draw': return 'Empate'
-        case 'Away': return 'Visitante'
-        default: return selection
-      }
-    }
-    if (marketType === 'BOTH_TEAMS_SCORE') {
-      switch (selection) {
-        case 'Yes': return 'Sim'
-        case 'No': return 'Não'
-        default: return selection
-      }
-    }
-    return selection
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const formatMatchResult = (selection: BetSelection) => {
-    const { match } = selection
-    if (match.homeScore !== undefined && match.awayScore !== undefined) {
-      return `${match.homeScore} x ${match.awayScore}`
-    }
-    return ''
+    return types[marketType] || marketType
   }
 
   const filteredBets = bets.filter(bet => {
     if (filter === 'all') return true
-    return bet.status.toLowerCase() === filter
+    return bet.status === filter
   })
-
-  const stats = {
-    total: bets.length,
-    pending: bets.filter(bet => bet.status === 'PENDING').length,
-    won: bets.filter(bet => bet.status === 'WON').length,
-    lost: bets.filter(bet => bet.status === 'LOST').length,
-    winRate: bets.length > 0 ? (bets.filter(bet => bet.status === 'WON').length / bets.filter(bet => bet.status !== 'PENDING').length * 100) || 0 : 0
-  }
 
   if (loading) {
     return (
@@ -177,12 +146,13 @@ export default function MinhasApostasPage() {
         <p className="text-gray-600 mt-2">Histórico e acompanhamento das suas apostas</p>
       </div>
 
-      {/* Estatísticas e Carteira */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{wallet?.balance.toLocaleString('pt-BR') || '0'}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {wallet?.balance.toFixed(0) || '0'}
+              </p>
               <p className="text-sm text-gray-600">Saldo Atual</p>
             </div>
           </CardContent>
@@ -191,7 +161,7 @@ export default function MinhasApostasPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-2xl font-bold">{stats?.totalBets || 0}</p>
               <p className="text-sm text-gray-600">Total de Apostas</p>
             </div>
           </CardContent>
@@ -200,7 +170,7 @@ export default function MinhasApostasPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{stats.won}</p>
+              <p className="text-2xl font-bold text-green-600">{stats?.wonBets || 0}</p>
               <p className="text-sm text-gray-600">Apostas Ganhas</p>
             </div>
           </CardContent>
@@ -209,38 +179,37 @@ export default function MinhasApostasPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
-              <p className="text-sm text-gray-600">Taxa de Acerto</p>
+              <p className="text-2xl font-bold">{stats?.roi?.toFixed(1) || 0}%</p>
+              <p className="text-sm text-gray-600">ROI</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtros */}
       <div className="flex space-x-2 mb-6">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          Todas ({stats.total})
+          Todas ({bets.length})
         </button>
         <button
-          onClick={() => setFilter('pending')}
-          className={`px-4 py-2 rounded-lg ${filter === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setFilter('PENDING')}
+          className={`px-4 py-2 rounded-lg ${filter === 'PENDING' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          Pendentes ({stats.pending})
+          Pendentes ({bets.filter(b => b.status === 'PENDING').length})
         </button>
         <button
-          onClick={() => setFilter('won')}
-          className={`px-4 py-2 rounded-lg ${filter === 'won' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setFilter('WON')}
+          className={`px-4 py-2 rounded-lg ${filter === 'WON' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          Ganhas ({stats.won})
+          Ganhas ({bets.filter(b => b.status === 'WON').length})
         </button>
         <button
-          onClick={() => setFilter('lost')}
-          className={`px-4 py-2 rounded-lg ${filter === 'lost' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setFilter('LOST')}
+          className={`px-4 py-2 rounded-lg ${filter === 'LOST' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          Perdidas ({stats.lost})
+          Perdidas ({bets.filter(b => b.status === 'LOST').length})
         </button>
       </div>
 
@@ -259,10 +228,10 @@ export default function MinhasApostasPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div>
-                      <p className="font-semibold">Aposta #{bet.id.slice(0, 8)}</p>
+                      <p className="font-semibold">Aposta #{typeof bet.id === 'string' ? bet.id.slice(0, 8) : bet.id}</p>
                       <div className="flex items-center text-sm text-gray-500">
                         <Clock className="w-4 h-4 mr-1" />
-                        {formatDate(bet.createdAt)}
+                        {format(new Date(bet.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </div>
                     </div>
                   </div>
@@ -283,27 +252,34 @@ export default function MinhasApostasPage() {
                     <div key={index} className="border rounded-lg p-3">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <div className="flex items-center space-x-2">
-                            {getMarketIcon(selection.marketType)}
-                            <span className="font-medium">{selection.match.homeTeam} vs {selection.match.awayTeam}</span>
+                          <div className="font-medium">
+                            {selection.homeTeam && selection.awayTeam 
+                              ? `${selection.homeTeam} vs ${selection.awayTeam}`
+                              : `Partida ${typeof selection.matchId === 'string' ? selection.matchId.slice(0, 8) : selection.matchId}`}
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">{getMarketName(selection.marketType)}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {getMarketName(selection.marketType)}
+                          </p>
                         </div>
                         <div className="text-right">
                           <Badge variant="outline">{selection.odds.toFixed(2)}</Badge>
-                          {formatMatchResult(selection) && (
-                            <p className="text-sm text-gray-600 mt-1">{formatMatchResult(selection)}</p>
+                          {selection.homeScore !== undefined && selection.awayScore !== undefined && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {selection.homeScore} x {selection.awayScore}
+                            </p>
                           )}
                         </div>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-green-600">
-                          {getSelectionName(selection.marketType, selection.selection)}
+                          {selection.selection}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          {formatDate(selection.match.kickoffTime)}
-                        </span>
+                        {selection.kickoffTime && (
+                          <span className="text-xs text-gray-500">
+                            {format(new Date(selection.kickoffTime), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -311,15 +287,16 @@ export default function MinhasApostasPage() {
 
                 <Separator className="mb-4" />
 
-                {/* Resumo Financeiro */}
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-sm text-gray-600">Valor Apostado</p>
-                    <p className="font-semibold">{bet.amount.toLocaleString('pt-BR')} Betoletas</p>
+                    <p className="font-semibold">{bet.amount.toFixed(0)} Betoletas</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Possível Ganho</p>
-                    <p className="font-semibold text-green-600">{bet.potentialWin.toLocaleString('pt-BR')} Betoletas</p>
+                    <p className="font-semibold text-green-600">
+                      {bet.potentialReturn.toFixed(0)} Betoletas
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
@@ -330,8 +307,8 @@ export default function MinhasApostasPage() {
                       bet.status === 'LOST' ? 'text-red-600' : 
                       'text-blue-600'
                     }`}>
-                      {bet.status === 'WON' ? `+${bet.potentialWin.toLocaleString('pt-BR')}` :
-                       bet.status === 'LOST' ? `-${bet.amount.toLocaleString('pt-BR')}` :
+                      {bet.status === 'WON' ? `+${bet.potentialReturn.toFixed(0)}` :
+                       bet.status === 'LOST' ? `-${bet.amount.toFixed(0)}` :
                        'Pendente'}
                     </p>
                   </div>
@@ -340,7 +317,7 @@ export default function MinhasApostasPage() {
                 {bet.settledAt && (
                   <div className="mt-3 text-center">
                     <p className="text-xs text-gray-500">
-                      Liquidada em {formatDate(bet.settledAt)}
+                      Liquidada em {format(new Date(bet.settledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                   </div>
                 )}

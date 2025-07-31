@@ -6,12 +6,15 @@ import {
   FootballApiFixturesResponse,
   FootballApiOddsResponse,
   FootballApiRoundsResponse,
-  FootballApiTeamsResponse
+  FootballApiTeamsResponse,
+  FootballApiTeamResponse
 } from '@betola/core/modules/matches/domain/services/football-api-service';
 
 export class FootballApiClient implements FootballApiService {
   private readonly config: FootballApiConfig;
   private readonly cache = new Map<string, { data: any; expiry: number }>();
+  private lastRequestTime = 0;
+  private readonly minRequestInterval = 2000; // 2 seconds between requests
 
   constructor(config: FootballApiConfig) {
     this.config = config;
@@ -24,26 +27,70 @@ export class FootballApiClient implements FootballApiService {
     if (cacheTtl) {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() < cached.expiry) {
+        console.log('🎯 Cache hit for:', endpoint);
         return cached.data;
       }
     }
 
+    // Rate limiting: ensure minimum interval between requests
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      console.log(`⏱️  Rate limiting: waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    this.lastRequestTime = Date.now();
+
     const url = `${this.config.baseUrl}${endpoint}`;
     
-    const response = await fetch(url, {
+    console.log('🌐 Making Football API request:', {
+      url,
+      method: 'GET',
+      apiKey: this.config.apiKey ? `${this.config.apiKey.slice(0, 8)}...${this.config.apiKey.slice(-4)}` : 'NOT SET',
       headers: {
-        'X-RapidAPI-Key': this.config.apiKey,
-        'X-RapidAPI-Host': this.config.baseUrl.includes('rapidapi') 
-          ? 'api-football-v1.p.rapidapi.com' 
-          : 'v3.football.api-sports.io'
+        'X-Auth-Token': this.config.apiKey ? 'SET' : 'NOT SET',
+        'User-Agent': 'Betola-App/1.0'
+      }
+    });
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Auth-Token': this.config.apiKey,
+        'User-Agent': 'Betola-App/1.0',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
 
+    console.log('📡 Football API response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    // Log response body for debugging on errors
     if (!response.ok) {
-      throw new Error(`Football API request failed: ${response.status} ${response.statusText}`);
+      let errorBody = 'No body';
+      try {
+        errorBody = await response.text();
+        console.log('❌ Error response body:', errorBody);
+      } catch (e) {
+        console.log('❌ Could not read error response body');
+      }
+      
+      throw new Error(`Football API request failed: ${response.status} ${response.statusText} - ${errorBody}`);
     }
 
     const data = await response.json();
+    
+    console.log('✅ API response data sample:', {
+      hasData: !!data,
+      dataType: typeof data,
+      keys: data && typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'not object'
+    });
     
     // Check for API errors
     if (data.results === 0 && data.error) {
@@ -56,6 +103,7 @@ export class FootballApiClient implements FootballApiService {
         data,
         expiry: Date.now() + cacheTtl * 1000
       });
+      console.log(`💾 Cached result for ${cacheTtl}s:`, endpoint);
     }
 
     return data;
@@ -63,7 +111,7 @@ export class FootballApiClient implements FootballApiService {
 
   async getBrasileirao(): Promise<FootballApiLeagueResponse> {
     return this.request<FootballApiLeagueResponse>(
-      '/leagues?country=Brazil&name=Serie%20A&current=true',
+      '/competitions/2013',
       this.config.cacheTtl.leagues
     );
   }
@@ -77,15 +125,15 @@ export class FootballApiClient implements FootballApiService {
 
   async getStandings(leagueId: number, season: number): Promise<FootballApiStandingsResponse> {
     return this.request<FootballApiStandingsResponse>(
-      `/standings?league=${leagueId}&season=${season}`,
+      `/competitions/${leagueId}/standings`,
       this.config.cacheTtl.standings
     );
   }
 
   async getFixtures(leagueId: number, season: number, round?: string): Promise<FootballApiFixturesResponse> {
-    let endpoint = `/fixtures?league=${leagueId}&season=${season}`;
+    let endpoint = `/competitions/${leagueId}/matches?season=${season}`;
     if (round) {
-      endpoint += `&round=${encodeURIComponent(round)}`;
+      endpoint += `&matchday=${round}`;
     }
     
     return this.request<FootballApiFixturesResponse>(
@@ -96,8 +144,15 @@ export class FootballApiClient implements FootballApiService {
 
   async getTeams(leagueId: number, season: number): Promise<FootballApiTeamsResponse> {
     return this.request<FootballApiTeamsResponse>(
-      `/teams?league=${leagueId}&season=${season}`,
+      `/competitions/${leagueId}/teams`,
       this.config.cacheTtl.standings // Teams don't change often
+    );
+  }
+
+  async getTeam(teamId: number): Promise<FootballApiTeamResponse> {
+    return this.request<FootballApiTeamResponse>(
+      `/teams/${teamId}`,
+      this.config.cacheTtl.standings // Team details don't change often
     );
   }
 

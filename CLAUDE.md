@@ -4,22 +4,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Quick Start (Recommended)
+- `npm run quick-start` - **🚀 Super rápido**: SQLite local, sem Docker
+- `npm run dev` - Start development servers for all apps (after setup)
+- `npm run setup` - **PostgreSQL completo**: Para desenvolvimento com Docker
+
 ### Core Commands
-- `npm run dev` - Start development servers for all apps
 - `npm run build` - Build all applications and packages
 - `npm run lint` - Run linting across all packages
 - `npm run check-types` - Run TypeScript type checking
 - `npm run format` - Format code using Prettier
 
+### Database Management
+- `npm run start:db` - Start PostgreSQL container only
+- `npm run db:migrate` - Run Prisma migrations
+- `npm run db:studio` - Open Prisma Studio (database GUI)
+- `npm run db:reset` - **Nuclear option**: Reset entire development environment
+
 ### Testing
-- **Core package tests:** `cd packages/core && npm run test`
 - **API tests:** `cd apps/api && npm run test` (unit tests) or `npm run test:e2e` (e2e tests)
-- **Single test file:** `cd packages/core && npm run test -- --testNamePattern="AuthenticateUserUseCase"`
+- **Single test file:** `cd apps/api && npm run test -- --testNamePattern="AuthenticateUserUseCase"`
+- **Core package:** Tests are located in `packages/core/` but no test runner is configured yet
 
 ### Application-Specific
 - **API development:** `cd apps/api && npm run dev`
-- **Web development:** `cd apps/web && npm run dev`
+- **Web development:** `cd apps/web && npm run dev` (runs on port 3005)
 - **Watch mode for packages:** `cd packages/core && npm run dev` (TypeScript watch mode)
+
+### First Time Setup
+
+**Opção 1: Rápida (SQLite - Recomendada)**
+1. `npm run quick-start` - Configuração automática com SQLite
+2. `npm run dev` - Pronto para desenvolver!
+
+**Opção 2: Completa (PostgreSQL)**
+1. `npm run setup` - Configuração com PostgreSQL (requer Docker)
+2. `npm run dev` - Start developing
+
+### Troubleshooting
+- **Portas ocupadas**: Pare processos nas portas 3002 (API) e 3005 (Web)
+- **Database issues**: `npm run db:reset` then `npm run setup`
+- **SQLite corrupto**: `rm prisma/dev.db && npm run quick-start`
+- **Docker issues**: Ensure Docker is running and try `npm run db:reset`
+
+## Current Project Status
+
+**Current Branch:** `feat/ingest-odds-api` 
+**Main Branch:** `master`
+
+This branch is focused on implementing odds ingestion from external APIs to improve the betting system's data accuracy and real-time capabilities.
 
 ## Architecture Overview
 
@@ -148,6 +181,8 @@ export class Result<T> {
 - **Linting:** ESLint with Prettier integration
 - **UI Framework:** Next.js 14 with Tailwind CSS and Radix UI components
 - **Authentication:** JWT tokens with bcrypt password hashing
+- **Infrastructure:** Docker Compose for local development, Prisma for database management
+- **External APIs:** Football API integration for match data and odds
 
 ## Development Workflow
 

@@ -1,7 +1,7 @@
 import { Controller, Get, Param, UseGuards, Query, Inject } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetMatchMarketsUseCase } from '@betola/core/modules/betting/application/use-cases/get-match-markets';
-import { SyncMatchOddsUseCase } from '@betola/core/modules/betting/application/use-cases/sync-match-odds';
+import { SyncMatchOddsUseCase } from '../use-cases/sync-match-odds.use-case';
 import { SyncBrasileraoDataUseCase } from '@betola/core/modules/matches/application/use-cases/sync-brasileirao-data';
 import { FootballApiService } from '@betola/core/modules/matches/domain/services/football-api-service';
 

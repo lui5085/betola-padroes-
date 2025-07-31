@@ -2,6 +2,7 @@ import { Bet } from '../entities/bet';
 import { BetId } from '../value-objects/bet-id';
 import { UserId } from '../../../auth/domain/value-objects/user-id';
 import { BetStatus } from '../value-objects/bet-status';
+import { MatchId } from '../../../matches/domain/value-objects/match-id';
 
 export interface BetFilters {
   userId?: UserId;
@@ -23,5 +24,7 @@ export interface BetsRepository {
   findByUserId(userId: UserId, filters?: BetFilters): Promise<PaginatedBets>;
   findPendingBets(): Promise<Bet[]>;
   findPendingBetsForMatches(matchIds: string[]): Promise<Bet[]>;
+  findPendingByMatch(matchId: MatchId): Promise<Bet[]>;
+  findPendingByMatchId(matchId: string): Promise<Bet[]>;
   update(bet: Bet): Promise<void>;
 }

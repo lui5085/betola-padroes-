@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { 
-  Home, 
   Trophy, 
   Target, 
   Users, 
@@ -15,11 +14,11 @@ import {
   LogOut
 } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
+import { AuthProvider } from '@/components/auth/auth-provider'
+import { useAuthStore } from '@/stores/auth-store'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Partidas', href: '/matches', icon: Trophy },
-  { name: 'Apostas', href: '/apostas', icon: Target },
   { name: 'Minhas Apostas', href: '/minhas-apostas', icon: Target },
   { name: 'Ligas', href: '/leagues', icon: Users },
   { name: 'Perfil', href: '/profile', icon: User },
@@ -32,21 +31,23 @@ export default function AppLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const { logout: clearAuth } = useAuthStore()
 
   const handleLogout = async () => {
     try {
       await apiClient.logout()
+      clearAuth()
       window.location.href = '/login'
     } catch (error) {
       console.error('Logout failed:', error)
-      // Force redirect even if logout fails
+      clearAuth()
       window.location.href = '/login'
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar */}
+    <AuthProvider>
+      <div className="min-h-screen bg-gray-50">
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
@@ -93,7 +94,6 @@ export default function AppLayout({
         </div>
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r">
         <div className="flex items-center h-16 px-6 border-b">
           <img src="/logo.svg" alt="Betola" className="h-8 w-auto" />
@@ -129,9 +129,7 @@ export default function AppLayout({
         </div>
       </div>
 
-      {/* Main content */}
       <div className="lg:pl-64">
-        {/* Top bar for mobile */}
         <div className="flex h-16 items-center justify-between px-4 border-b bg-white lg:hidden">
           <Button
             variant="ghost"
@@ -141,14 +139,14 @@ export default function AppLayout({
             <Menu className="h-5 w-5" />
           </Button>
           <img src="/logo.svg" alt="Betola" className="h-6 w-auto" />
-          <div className="w-8" /> {/* Spacer */}
+          <div className="w-8" />
         </div>
 
-        {/* Page content */}
         <main className="flex-1">
           {children}
         </main>
       </div>
     </div>
+    </AuthProvider>
   )
 }

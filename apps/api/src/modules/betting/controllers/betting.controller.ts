@@ -8,21 +8,24 @@ import {
   UseGuards, 
   NotFoundException,
   BadRequestException,
-  Inject 
+  Inject,
+  HttpException,
+  HttpStatus
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { UserPayload } from '../../auth/types/user-payload';
 import { PlaceBetDto } from '../dto/place-bet.dto';
 import { BetResponseDto } from '../dto/bet-response.dto';
 import { GetBetsQueryDto } from '../dto/get-bets-query.dto';
 import { MarketResponseDto } from '../../matches/dto/market-response.dto';
-import { PlaceBetUseCase } from '@betola/core/modules/betting/application/use-cases/place-bet';
+import { PlaceBetUseCase, PlaceBetRequest } from '@betola/core';
 import { GetUserBetsUseCase } from '../use-cases/get-user-bets.use-case';
 import { CalculateBetUseCase } from '@betola/core/modules/betting/application/use-cases/calculate-bet';
 import { SettleBetsUseCase } from '@betola/core/modules/betting/application/use-cases/settle-bets';
-import { SyncMatchOddsUseCase } from '@betola/core/modules/betting/application/use-cases/sync-match-odds';
-import { GetMatchMarketsUseCase } from '../../matches/use-cases/get-match-markets.use-case';
+import { SyncMatchOddsUseCase } from '../use-cases/sync-match-odds.use-case';
+import { GetMatchMarketsUseCase } from '../use-cases/get-match-markets.use-case';
 import { MarketsRepository } from '@betola/core/modules/betting/domain/repositories/markets-repository';
 import { MatchId } from '@betola/core/modules/matches/domain/value-objects/match-id';
 
@@ -32,7 +35,7 @@ import { MatchId } from '@betola/core/modules/matches/domain/value-objects/match
 @ApiBearerAuth()
 export class BettingController {
   constructor(
-    private readonly placeBetUseCase: PlaceBetUseCase,
+    @Inject('PlaceBetUseCase') private readonly placeBetUseCase: any,
     private readonly getUserBetsUseCase: GetUserBetsUseCase,
     private readonly calculateBetUseCase: CalculateBetUseCase,
     private readonly settleBetsUseCase: SettleBetsUseCase,
@@ -42,30 +45,25 @@ export class BettingController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Place a bet' })
-  @ApiResponse({ status: 201, description: 'Bet placed successfully', type: BetResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid bet data' })
+  @UseGuards(JwtAuthGuard)
   async placeBet(
-    @CurrentUser() user: any,
-    @Body() dto: PlaceBetDto
-  ): Promise<BetResponseDto> {
-    const result = await this.placeBetUseCase.execute({
-      userId: user.id,
-      selections: dto.selections.map(sel => ({
-        matchId: sel.matchId,
-        marketId: sel.marketId,
-        optionName: sel.optionName,
-        odds: sel.odds
-      })),
-      amount: dto.amount,
-      type: dto.type
-    });
-
-    if (!result.isSuccess) {
-      throw new BadRequestException(result.error);
+    @Body() request: PlaceBetRequest,
+    @CurrentUser() user: UserPayload,
+  ) {
+    if (!user || !user.id || typeof user.id !== 'string' || user.id.trim() === '') {
+      throw new HttpException('User not authenticated or invalid user ID', HttpStatus.UNAUTHORIZED);
     }
 
-    return BetResponseDto.from(result.value);
+    const result = await this.placeBetUseCase.execute({
+      ...request,
+      userId: user.id,
+    });
+
+    if (result.isFailure()) {
+      throw new HttpException(result.error, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
   }
 
   @Get()
@@ -79,12 +77,10 @@ export class BettingController {
       userId: user.id,
       status: query.status,
       limit: query.limit,
-      offset: query.offset,
-      startDate: query.startDate,
-      endDate: query.endDate
+      page: query.offset ? Math.floor(query.offset / (query.limit || 20)) + 1 : 1
     });
 
-    return result.value.map(bet => BetResponseDto.from(bet));
+    return result.value.items.map(bet => BetResponseDto.from(bet));
   }
 
   @Get(':id')
@@ -100,11 +96,11 @@ export class BettingController {
       betId
     });
 
-    if (!result.value.length) {
+    if (!result.value.items.length) {
       throw new NotFoundException('Bet not found');
     }
 
-    return BetResponseDto.from(result.value[0]);
+    return BetResponseDto.from(result.value.items[0]);
   }
 
   @Post('calculate')
@@ -231,7 +227,7 @@ export class BettingController {
     });
 
     const stats = {
-      totalBets: bets.value.length,
+      totalBets: bets.value.items.length,
       wonBets: 0,
       lostBets: 0,
       pendingBets: 0,
@@ -242,7 +238,7 @@ export class BettingController {
       roi: 0
     };
 
-    for (const bet of bets.value) {
+    for (const bet of bets.value.items) {
       stats.totalStaked += bet.amount;
 
       switch (bet.status) {

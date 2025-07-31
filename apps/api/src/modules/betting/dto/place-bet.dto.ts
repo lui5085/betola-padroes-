@@ -13,6 +13,10 @@ export class BetSelectionDto {
 
   @ApiProperty()
   @IsString()
+  marketType: string;
+
+  @ApiProperty()
+  @IsString()
   optionName: string;
 
   @ApiProperty({ minimum: 1.01 })

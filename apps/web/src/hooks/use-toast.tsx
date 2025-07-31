@@ -8,7 +8,6 @@ export interface ToastProps {
 
 export function useToast() {
   const toast = React.useCallback((props: ToastProps) => {
-    // Simple implementation - you can enhance this later
     console.log("Toast:", props)
   }, [])
 

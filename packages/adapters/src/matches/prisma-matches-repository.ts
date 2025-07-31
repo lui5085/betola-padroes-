@@ -87,6 +87,23 @@ export class PrismaMatchesRepository implements MatchesRepository {
     return matches.map(match => this.toDomain(match));
   }
 
+  async findSettlementPending(): Promise<Match[]> {
+    const matches = await this.prisma.match.findMany({
+      where: {
+        status: 'FINISHED',
+        betSelections: {
+          some: {
+            bet: {
+              status: 'PENDING'
+            }
+          }
+        }
+      }
+    });
+
+    return matches.map(match => this.toDomain(match));
+  }
+
   async findUpcoming(limit?: number): Promise<Match[]> {
     const matches = await this.prisma.match.findMany({
       where: {
@@ -171,9 +188,9 @@ export class PrismaMatchesRepository implements MatchesRepository {
     });
   }
 
-  async findByStatus(status: MatchStatusVO): Promise<Match[]> {
+  async findByStatus(status: MatchStatus): Promise<Match[]> {
     const matches = await this.prisma.match.findMany({
-      where: { status: status.value }
+      where: { status: status }
     });
 
     return matches.map(match => this.toDomain(match));

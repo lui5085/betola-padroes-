@@ -10,23 +10,26 @@ export interface LeagueProps {
   id: LeagueId;
   name: string;
   description?: string;
+  imageUrl?: string;
   code: LeagueCode;
   ownerId: UserId;
   maxMembers?: number;
   isPrivate?: boolean;
   settings?: Record<string, any>;
+  members?: LeagueMember[];
   createdAt?: DateTime;
   updatedAt?: DateTime;
 }
 
 export class League extends BaseEntity<LeagueId> {
-  private readonly _name: string;
-  private readonly _description: string;
+  private _name: string;
+  private _description: string;
+  private _imageUrl: string;
   private readonly _code: LeagueCode;
   private readonly _ownerId: UserId;
-  private readonly _maxMembers: number;
-  private readonly _isPrivate: boolean;
-  private readonly _settings: Record<string, any>;
+  private _maxMembers: number;
+  private _isPrivate: boolean;
+  private _settings: Record<string, any>;
   private _members: LeagueMember[];
   
   constructor(props: LeagueProps) {
@@ -42,12 +45,13 @@ export class League extends BaseEntity<LeagueId> {
     
     this._name = props.name.trim();
     this._description = props.description?.trim() || '';
+    this._imageUrl = props.imageUrl || '';
     this._code = props.code;
     this._ownerId = props.ownerId;
     this._maxMembers = props.maxMembers || 100;
     this._isPrivate = props.isPrivate || false;
     this._settings = props.settings || {};
-    this._members = [];
+    this._members = props.members || [];
   }
   
   static create(props: Omit<LeagueProps, 'id' | 'code'>): League {
@@ -64,6 +68,10 @@ export class League extends BaseEntity<LeagueId> {
   
   get description(): string {
     return this._description;
+  }
+  
+  get imageUrl(): string {
+    return this._imageUrl;
   }
   
   get code(): LeagueCode {
@@ -193,5 +201,60 @@ export class League extends BaseEntity<LeagueId> {
         member.updatePosition(index + 1);
         return member;
       });
+  }
+
+  getMembers(): LeagueMember[] {
+    return [...this._members];
+  }
+
+  // Update methods
+  updateName(name: string): void {
+    if (!name || name.trim().length === 0) {
+      throw new Error('League name cannot be empty');
+    }
+    
+    if (name.length > 100) {
+      throw new Error('League name cannot exceed 100 characters');
+    }
+    
+    this._name = name.trim();
+    this.updateTimestamp();
+  }
+
+  updateDescription(description: string): void {
+    this._description = description?.trim() || '';
+    this.updateTimestamp();
+  }
+
+  updateImageUrl(imageUrl: string): void {
+    this._imageUrl = imageUrl || '';
+    this.updateTimestamp();
+  }
+
+  updatePrivacy(isPrivate: boolean): void {
+    this._isPrivate = isPrivate;
+    this.updateTimestamp();
+  }
+
+  updateMaxMembers(maxMembers: number): void {
+    if (maxMembers < 2) {
+      throw new Error('League must allow at least 2 members');
+    }
+    
+    if (maxMembers > 1000) {
+      throw new Error('League cannot exceed 1000 members');
+    }
+    
+    if (maxMembers < this._members.length) {
+      throw new Error('Cannot set max members below current member count');
+    }
+    
+    this._maxMembers = maxMembers;
+    this.updateTimestamp();
+  }
+
+  updateSettings(settings: Record<string, any>): void {
+    this._settings = { ...settings };
+    this.updateTimestamp();
   }
 }

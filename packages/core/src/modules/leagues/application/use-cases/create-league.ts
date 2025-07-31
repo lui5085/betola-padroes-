@@ -11,6 +11,7 @@ export interface CreateLeagueRequest {
   ownerId: string;
   name: string;
   description?: string;
+  imageUrl?: string;
   maxMembers?: number;
   isPrivate?: boolean;
 }
@@ -20,6 +21,7 @@ export interface CreateLeagueResponse {
   name: string;
   code: string;
   description: string;
+  imageUrl: string;
   maxMembers: number;
   isPrivate: boolean;
 }
@@ -46,6 +48,7 @@ export class CreateLeagueUseCase implements UseCase<CreateLeagueRequest, CreateL
       const league = League.create({
         name: request.name,
         description: request.description,
+        imageUrl: request.imageUrl,
         ownerId,
         maxMembers: request.maxMembers,
         isPrivate: request.isPrivate
@@ -62,6 +65,7 @@ export class CreateLeagueUseCase implements UseCase<CreateLeagueRequest, CreateL
         name: league.name,
         code: league.code.value,
         description: league.description,
+        imageUrl: league.imageUrl,
         maxMembers: league.maxMembers,
         isPrivate: league.isPrivate
       });

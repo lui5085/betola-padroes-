@@ -3,36 +3,30 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Trash2, AlertCircle } from 'lucide-react'
 import { useBetSlipStore } from '@/stores/bet-slip-store'
 import { apiClient } from '@/lib/api/client'
-import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth-store'
 
 export function BetSlip() {
   const router = useRouter()
-  const { user } = useAuthStore()
-  const { 
-    selections, 
-    amount, 
-    setAmount, 
-    removeSelection, 
-    clearSelections,
-    totalOdds,
-    potentialWin
-  } = useBetSlipStore()
-  
-  const [isPlacing, setIsPlacing] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const { selections, amount, setAmount, removeSelection, clearSelections } = useBetSlipStore();
+  const { isAuthenticated } = useAuthStore()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const totalOdds = selections.reduce((acc, sel) => acc * sel.odds, 1)
+  const potentialWin = parseFloat(amount) * totalOdds || 0
 
   const handlePlaceBet = async () => {
-    if (!user) {
+    if (!isAuthenticated) {
       router.push('/login')
       return
     }
@@ -42,141 +36,211 @@ export function BetSlip() {
       return
     }
 
-    if (amount < 10) {
-      setError('Valor mínimo da aposta é 10 betoletas')
+    const betAmount = parseFloat(amount)
+    if (isNaN(betAmount) || betAmount < 10) {
+      setError('O valor mínimo da aposta é 10 betoletas')
       return
     }
 
-    setIsPlacing(true)
-    setError('')
+    if (betAmount > 10000) {
+      setError('O valor máximo da aposta é 10.000 betoletas')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
 
     try {
-      await apiClient.placeBet({
+      const requestData = {
+        amount: parseFloat(amount),
         selections: selections.map(s => ({
           matchId: s.matchId,
           marketType: s.marketType,
           selection: s.selection,
-          odds: s.odds
+          odds: s.odds,
         })),
-        amount
-      })
-
-      setSuccess(true)
-      clearSelections()
+      };
+      await apiClient.placeBet(requestData);
       
-      // Redireciona para minhas apostas após 2 segundos
+      setSuccess('Aposta realizada com sucesso!');
+      clearSelections();
       setTimeout(() => {
-        router.push('/profile?tab=bets')
-      }, 2000)
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer aposta')
+        setSuccess(null);
+        router.push('/minhas-apostas');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Error placing bet:', err)
+      setError(err.response?.data?.message || err.message || 'Erro ao fazer aposta')
     } finally {
-      setIsPlacing(false)
+      setLoading(false)
     }
   }
 
   if (selections.length === 0) {
     return (
-      <Card className="p-4">
-        <div className="text-center text-muted-foreground">
-          <p className="text-sm">Nenhuma seleção</p>
-          <p className="text-xs mt-1">Escolha um mercado para apostar</p>
-        </div>
+      <Card className="sticky top-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {selections.length}
+            </Badge>
+            Cupom de Apostas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🎯</span>
+            </div>
+            <p className="text-muted-foreground font-medium">
+              Nenhuma aposta selecionada
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Clique nas odds das partidas para adicionar ao cupom
+            </p>
+          </div>
+        </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Boletim de Aposta</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearSelections}
-          className="text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {selections.map((selection) => (
-          <div key={`${selection.matchId}-${selection.marketType}`} className="space-y-1">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium">{selection.matchName}</p>
-                <p className="text-xs text-muted-foreground">{selection.marketName}</p>
-                <p className="text-sm">{selection.selection}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{selection.odds.toFixed(2)}</Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeSelection(selection.matchId, selection.marketType)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+    <Card className="sticky top-4">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {selections.length}
+            </Badge>
+            Cupom de Apostas
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearSelections}
+            disabled={loading}
+          >
+            Limpar
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-2">
+          {selections.map((sel, idx) => (
+            <div key={idx} className="bg-secondary/20 rounded p-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{sel.matchName}</p>
+                  <p className="text-xs text-muted-foreground">{sel.marketName}</p>
+                  <p className="text-sm font-medium text-green-600 mt-1">
+                    {sel.selection}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{sel.odds.toFixed(2)}</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => removeSelection(sel.matchId, sel.marketType)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <Separator className="my-4" />
-
-      <div className="space-y-3">
-        <div>
-          <label className="text-sm font-medium">Valor da Aposta</label>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm">B$</span>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              min={10}
-              max={10000}
-              step={10}
-              className="text-right"
-            />
-          </div>
+          ))}
         </div>
 
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Odds Total:</span>
+        <Separator />
+
+        <div className="space-y-2">
+          <label htmlFor="amount" className="text-sm font-medium">
+            Valor da Aposta (Betoletas)
+          </label>
+          <Input
+            id="amount"
+            type="number"
+            min="10"
+            max="10000"
+            step="1"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0"
+          />
+          <p className="text-xs text-muted-foreground">
+            Mínimo: 10 | Máximo: 10.000
+          </p>
+        </div>
+
+        <div className="space-y-2 bg-secondary/20 rounded p-3">
+          <div className="flex justify-between text-sm">
+            <span>Odd Total:</span>
             <span className="font-medium">{totalOdds.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Ganho Potencial:</span>
-            <span className="font-semibold text-green-600">
-              B$ {potentialWin.toFixed(2)}
+          <div className="flex justify-between text-sm">
+            <span>Possível Ganho:</span>
+            <span className="font-medium text-green-600">
+              {potentialWin.toFixed(2)} Betoletas
             </span>
           </div>
         </div>
 
-        {error && (
-          <div className="bg-destructive/10 text-destructive text-sm p-2 rounded">
-            {error}
+        {success && (
+          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+            <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✓</span>
+            </div>
+            <span>{success}</span>
           </div>
         )}
 
-        {success && (
-          <div className="bg-green-500/10 text-green-600 text-sm p-2 rounded">
-            Aposta realizada com sucesso! Redirecionando...
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
           </div>
         )}
 
         <Button
+          className="w-full h-12 text-base font-semibold"
           onClick={handlePlaceBet}
-          disabled={isPlacing || success}
-          className="w-full"
+          disabled={loading || selections.length === 0 || success !== null}
+          size="lg"
         >
-          {isPlacing ? 'Processando...' : 'Fazer Aposta'}
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Processando...
+            </div>
+          ) : success ? (
+            <div className="flex items-center gap-2">
+              <span>✓</span>
+              Aposta Realizada!
+            </div>
+          ) : (
+            `Apostar ${potentialWin.toFixed(2)} Betoletas`
+          )}
         </Button>
-      </div>
+
+        {!isAuthenticated ? (
+          <div className="text-xs text-center text-muted-foreground bg-amber-50 p-2 rounded border border-amber-200">
+            <p>⚠️ Você precisa estar logado para apostar</p>
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 h-auto text-xs"
+              onClick={() => router.push('/login')}
+            >
+              Fazer login
+            </Button>
+          </div>
+        ) : (
+          <div className="text-xs text-center text-gray-500 mt-2">
+            <p>💰 Saldo disponível: Consulte sua carteira</p>
+          </div>
+        )}
+      </CardContent>
     </Card>
   )
 }

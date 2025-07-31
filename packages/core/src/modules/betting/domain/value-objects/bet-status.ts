@@ -2,6 +2,7 @@ export enum BetStatus {
   PENDING = 'PENDING',
   WON = 'WON',
   LOST = 'LOST',
+  VOID = 'VOID',
   CANCELLED = 'CANCELLED',
   PARTIALLY_WON = 'PARTIALLY_WON'
 }
@@ -18,7 +19,7 @@ export class BetStatusVO {
   }
   
   isSettled(): boolean {
-    return [BetStatus.WON, BetStatus.LOST, BetStatus.PARTIALLY_WON].includes(this._value);
+    return [BetStatus.WON, BetStatus.LOST, BetStatus.VOID, BetStatus.PARTIALLY_WON].includes(this._value);
   }
   
   isWinning(): boolean {

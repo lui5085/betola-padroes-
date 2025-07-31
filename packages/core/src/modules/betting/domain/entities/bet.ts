@@ -51,21 +51,30 @@ export class Bet extends BaseEntity<BetId> {
       throw new Error('A bet cannot have more than 10 selections');
     }
     
-    // Check for conflicting markets in the same match
-    const matchIds = new Set<string>();
+    // Check for conflicting selections (multiple selections in the same market of the same match)
+    const marketKeys = new Set<string>();
     for (const selection of selections) {
-      const matchKey = selection.matchId.value;
-      if (matchIds.has(matchKey)) {
-        throw new Error('Cannot bet on multiple markets in the same match');
+      const marketKey = `${selection.matchId.value}-${selection.marketType.value}`;
+      if (marketKeys.has(marketKey)) {
+        throw new Error('Cannot bet on multiple options in the same market');
       }
-      matchIds.add(matchKey);
+      marketKeys.add(marketKey);
     }
   }
   
   private calculateTotalOdds(): Odds {
-    return this._selections.reduce(
+    if (this._selections.length === 0) {
+      return new Odds(1.01); // Minimum valid odds for empty case
+    }
+    
+    if (this._selections.length === 1) {
+      return this._selections[0].odds;
+    }
+    
+    // For multiple selections, multiply all odds together
+    return this._selections.slice(1).reduce(
       (total, selection) => total.multiply(selection.odds),
-      new Odds(1)
+      this._selections[0].odds
     );
   }
   
@@ -97,32 +106,25 @@ export class Bet extends BaseEntity<BetId> {
     return this._settledAt;
   }
   
-  settle(results: Map<string, MatchResult>): void {
-    if (!this._status.isPending()) {
-      throw new Error('Can only settle pending bets');
-    }
-    
-    // Check if all matches are finished
+  evaluate(settledMatchId: string, result: MatchResult): boolean {
+    // Para apostas múltiplas, todas as seleções precisam ser resolvidas.
+    // Esta lógica simplificada assume que a liquidação acontece
+    // apenas quando a última partida da aposta múltipla termina.
+    let isWon = true;
     for (const selection of this._selections) {
-      const result = results.get(selection.matchId.value);
-      if (!result) {
-        throw new Error(`Match ${selection.matchId.value} result not available`);
+      if (selection.matchId.value === settledMatchId) {
+        if (!selection.isWinning(result)) {
+          isWon = false;
+          break;
+        }
       }
     }
-    
-    // Check if all selections are winning
-    let allCorrect = true;
-    for (const selection of this._selections) {
-      const result = results.get(selection.matchId.value)!;
-      if (!selection.isWinning(result)) {
-        allCorrect = false;
-        break;
-      }
-    }
-    
-    this._status = new BetStatusVO(allCorrect ? BetStatus.WON : BetStatus.LOST);
-    this._settledAt = DateTime.now();
-    this.updateTimestamp();
+    return isWon;
+  }
+
+  settle(isWon: boolean): void {
+    this._status = new BetStatusVO(isWon ? BetStatus.WON : BetStatus.LOST);
+    this._settledAt = new DateTime(new Date());
   }
   
   cancel(): void {

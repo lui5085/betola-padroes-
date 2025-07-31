@@ -4,6 +4,7 @@ import { Balance } from '../value-objects/balance';
 import { UserId } from '../../../auth/domain/value-objects/user-id';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { DateTime } from '../../../../shared/domain/value-objects/date-time';
+import { BetAmount } from '../../../betting/domain/value-objects/bet-amount';
 
 export interface WalletProps {
   id: WalletId;
@@ -58,6 +59,21 @@ export class Wallet extends BaseEntity<WalletId> {
   
   get netProfit(): Money {
     return this._totalWon.subtract(this._totalLost);
+  }
+  
+  canAfford(amount: BetAmount): boolean {
+    return this._balance.value >= amount.value;
+  }
+
+  debit(amount: BetAmount): void {
+    if (!this.canAfford(amount)) {
+      throw new Error('Insufficient funds');
+    }
+    this._balance = new Balance(this._balance.value - amount.value);
+  }
+
+  credit(amount: Money): void {
+    this._balance = new Balance(this._balance.value + amount.value);
   }
   
   deductBetAmount(amount: Money): void {

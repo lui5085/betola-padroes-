@@ -27,7 +27,6 @@ function VerifyEmailContent() {
         await apiClient.verifyEmail(token)
         setStatus('success')
         
-        // Redireciona para login após 3 segundos
         setTimeout(() => {
           router.push('/login')
         }, 3000)

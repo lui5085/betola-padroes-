@@ -4,8 +4,10 @@
 import { useState, Suspense } from 'react'
 import { User, Lock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiClient } from '@/lib/api/client'
+import { useAuthStore } from '@/stores/auth-store'
 import { z } from 'zod'
 
 // Schema de validação
@@ -22,6 +24,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { setAuth } = useAuthStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +40,11 @@ function LoginForm() {
       const response = await apiClient.login(data as { email: string; password: string })
       console.log('Login response:', response)
       
-      // Redireciona para a página especificada no parâmetro redirect ou dashboard
+      // Salva os dados do usuário na store
+      const token = response.accessToken || 'authenticated';
+      setAuth(response.user, token)
+      
+      // Redireciona para a página especificada no parâmetro redirect ou matches
       const redirectTo = searchParams.get('redirect') || '/dashboard'
       console.log('Redirecting to:', redirectTo)
       router.push(redirectTo)
@@ -62,26 +69,30 @@ function LoginForm() {
   return (
     <div
       className="min-h-screen w-full bg-cover bg-center flex items-center justify-center px-4"
-      style={{ backgroundImage: "url('/login-bg.png')" }}
+      style={{ 
+        backgroundImage: "url('/login-bg.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
     >
-      {/* Container principal: logo + card */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-10 max-w-none w-full">
         
-        {/* Logo fora do card, à esquerda */}
         <div className="flex-shrink-0 flex justify-center md:justify-start">
-          <img
+          <Image
             src="/logo.svg"
             alt="Logo Betola"
-            className="w-96 md:w-[36rem] lg:w-[44rem]"
+            width={700}
+            height={200}
+            priority
+            className="w-96 md:w-[36rem] lg:w-[44rem] h-auto"
           />
         </div>
 
-        {/* Card de login */}
         <form 
           onSubmit={handleSubmit}
           className="bg-[#FAFBEF] w-full max-w-md p-8 rounded-2xl shadow-md flex flex-col gap-6 justify-center"
         >
-          {/* Erro geral */}
           {generalError && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-center gap-2">
               <AlertCircle size={18} />
@@ -89,9 +100,7 @@ function LoginForm() {
             </div>
           )}
 
-          {/* Campos de entrada */}
           <div className="flex flex-col gap-4">
-            {/* Campo email */}
             <div>
               <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
                 <User size={18} className="mr-2 text-white" />
@@ -109,7 +118,6 @@ function LoginForm() {
               )}
             </div>
 
-            {/* Campo senha */}
             <div>
               <div className="flex items-center bg-gray-800 text-white px-4 py-3 rounded-full">
                 <Lock size={18} className="mr-2 text-white" />
@@ -143,14 +151,12 @@ function LoginForm() {
             </button>
           </div>
 
-          {/* Separador */}
           <div className="flex items-center justify-between gap-4">
             <hr className="flex-1 border-gray-400" />
             <span className="text-gray-600 text-sm">OU</span>
             <hr className="flex-1 border-gray-400" />
           </div>
 
-          {/* Link para criar conta */}
           <p className="text-center text-sm">
             Não tem uma conta ainda?{' '}
             <Link href="/register" className="text-green-900 font-medium underline">

@@ -1,30 +1,26 @@
-import { LoginUserDto, RegisterUserDto } from "./types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'
 class ApiClient {
-  private baseURL: string;
+  private token: string | null = null;
 
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
+  setAuthToken(token: string | null) {
+    this.token = token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options?: RequestInit,
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    const config: RequestInit = {
-      ...options,
-      credentials: 'include', // Importante para incluir cookies
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    };
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    } as Record<string, string>;
 
-    const response = await fetch(url, config);
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
@@ -34,37 +30,17 @@ class ApiClient {
     return response.json();
   }
 
-  // Auth endpoints
-  async register(data: RegisterUserDto) {
+  async register(data: { email: string; username: string; password: string }) {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async login(data: LoginUserDto) {
+  async login(data: { email: string; password: string }) {
     return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
-    });
-  }
-
-  async logout() {
-    return this.request('/auth/logout', {
-      method: 'POST',
-    });
-  }
-
-  async getProfile() {
-    return this.request('/auth/me', {
-      method: 'GET',
-    });
-  }
-
-  async verifyEmail(token: string) {
-    return this.request('/auth/verify-email', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
     });
   }
 
@@ -75,47 +51,105 @@ class ApiClient {
     });
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(data: { token: string; password: string }) {
     return this.request('/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ token, newPassword }),
+      body: JSON.stringify(data),
     });
   }
 
-  async resendVerification(email: string) {
-    return this.request('/auth/resend-verification', {
+  async logout() {
+    try {
+      await this.request('/auth/logout', {
+        method: 'POST',
+      });
+    } finally {
+      this.setAuthToken(null);
+    }
+  }
+
+  async verifyEmail(token: string) {
+    return this.request('/auth/verify-email', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ token }),
     });
   }
 
-  // Outros endpoints...
-  async getMatches(params?: any) {
-    const queryString = new URLSearchParams(params).toString();
+  async getProfile() {
+    return this.request('/auth/me');
+  }
+
+  async updateProfile(data: any) {
+    return this.request('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMatches(params?: { limit?: number; status?: string }) {
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
     return this.request(`/matches${queryString ? `?${queryString}` : ''}`);
   }
 
-  async getMatchMarkets(matchId: string) {
-    return this.request(`/matches/${matchId}/markets`);
+  async getMatchDetails(matchId: string) {
+    return this.request(`/matches/${matchId}`);
   }
 
-  async placeBet(data: any) {
+  async getMatchMarkets(matchId: string) {
+    return this.request(`/bets/matches/${matchId}/markets`);
+  }
+
+  async placeBet(data: { selections: any[]; amount: number }) {
     return this.request('/bets', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async getUserBets(params?: any) {
-    const queryString = new URLSearchParams(params).toString();
+  async getUserBets(params?: { status?: string; limit?: number; offset?: number }) {
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
     return this.request(`/bets${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getBetDetails(betId: string) {
+    return this.request(`/bets/${betId}`);
+  }
+
+  async calculateBet(data: {
+    selections: Array<{ odds: number }>;
+    amount: number;
+    type: 'SINGLE' | 'MULTIPLE' | 'SYSTEM';
+  }) {
+    return this.request('/bets/calculate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getUserStats() {
+    return this.request('/bets/stats/summary');
+  }
+
+  async getUserWallet() {
+    return this.request('/wallet/balance');
+  }
+
+  async addFunds(amount: number) {
+    return this.request('/wallet/add-funds', {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
   }
 
   async getLeagues() {
     return this.request('/leagues');
   }
 
-  async createLeague(data: any) {
+  async getUserLeagues() {
+    return this.request('/leagues/user');
+  }
+
+  async createLeague(data: { name: string; description?: string; isPrivate: boolean }) {
     return this.request('/leagues', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -129,29 +163,51 @@ class ApiClient {
     });
   }
 
+  async getLeagueDetails(leagueId: string) {
+    return this.request(`/leagues/${leagueId}`);
+  }
+
   async getLeagueRanking(leagueId: string) {
     return this.request(`/leagues/${leagueId}/ranking`);
   }
 
-  // Betting endpoints  
-  async getBettingMarkets(matchId: string) {
-    return this.request(`/markets/match/${matchId}`);
+  async syncMatches() {
+    return this.request('/bets/sync-odds', {
+      method: 'POST',
+    });
   }
 
-  async syncOdds(matchId?: string) {
-    const params = matchId ? `?matchId=${matchId}` : '';
-    return this.request(`/markets/sync${params}`, {
+  async settleBets() {
+    return this.request('/bets/settle', {
+      method: 'POST',
+    });
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request(endpoint, {
       method: 'GET',
     });
   }
 
-  async getAvailableMatches() {
-    return this.request('/matches?available=true');
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 
-  async getUserWallet() {
-    return this.request('/wallet');
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
   }
 }
 
-export const apiClient = new ApiClient(API_URL);
+export const apiClient = new ApiClient();

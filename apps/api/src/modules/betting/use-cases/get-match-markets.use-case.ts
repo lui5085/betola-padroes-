@@ -1,4 +1,5 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 export interface GetMatchMarketsRequest {
   matchId: string;
@@ -7,8 +8,7 @@ export interface GetMatchMarketsRequest {
 @Injectable()
 export class GetMatchMarketsUseCase {
   constructor(
-    @Inject('PrismaService')
-    private readonly prisma: any
+    private readonly prisma: PrismaService
   ) {}
   
   async execute(request: GetMatchMarketsRequest): Promise<{ value: any[] }> {

@@ -26,24 +26,24 @@ export class SyncTeamsUseCase {
       // Get Brasileirao league data first
       const leagueResponse = await this.footballApiService.getBrasileirao();
       
-      if (!leagueResponse.response.length) {
+      if (!leagueResponse.id) {
         return Result.failure('Brasileirao league not found');
       }
 
-      const league = leagueResponse.response[0];
-      const currentSeason = league.seasons.find(s => s.current);
+      const league = leagueResponse;
+      const currentSeason = league.seasons.find(s => s.id === 2257);
       
       if (!currentSeason) {
         return Result.failure('Current Brasileirao season not found');
       }
 
-      const leagueId = league.league.id;
-      const season = request.season || currentSeason.year;
+      const leagueId = league.id;
+      const season = request.season || 2024;
 
       // Get teams for the league
       const teamsResponse = await this.footballApiService.getTeams(leagueId, season);
       
-      if (!teamsResponse.response.length) {
+      if (!teamsResponse.teams?.length) {
         return Result.failure('No teams found for Brasileirao');
       }
 
@@ -51,9 +51,9 @@ export class SyncTeamsUseCase {
       let teamsUpdated = 0;
       const errors: string[] = [];
 
-      for (const teamData of teamsResponse.response) {
+      for (const teamData of teamsResponse.teams) {
         try {
-          const existingTeam = await this.teamsRepository.findByExternalId(teamData.team.id.toString());
+          const existingTeam = await this.teamsRepository.findByExternalId(teamData.id.toString());
           
           if (existingTeam) {
             // Update existing team if needed
@@ -70,7 +70,7 @@ export class SyncTeamsUseCase {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          errors.push(`Failed to process team ${teamData.team.name}: ${errorMessage}`);
+          errors.push(`Failed to process team ${teamData.name}: ${errorMessage}`);
         }
       }
 
@@ -89,16 +89,16 @@ export class SyncTeamsUseCase {
   private createTeamFromApiData(teamData: any): Team {
     return new Team({
       id: TeamId.create(),
-      externalId: teamData.team.id.toString(),
-      name: teamData.team.name,
-      shortName: teamData.team.code || teamData.team.name.substring(0, 3).toUpperCase(),
-      logoUrl: teamData.team.logo,
-      founded: teamData.team.founded,
-      country: teamData.team.country,
+      externalId: teamData.id.toString(),
+      name: teamData.name,
+      shortName: teamData.shortName || teamData.tla || teamData.name.substring(0, 3).toUpperCase(),
+      logoUrl: teamData.crest,
+      founded: teamData.founded,
+      country: 'Brazil', // Since this is specifically for Brasileirao
       venue: teamData.venue ? {
-        name: teamData.venue.name,
-        city: teamData.venue.city,
-        capacity: teamData.venue.capacity
+        name: teamData.venue,
+        city: teamData.venue, // The API only provides venue name
+        capacity: null // Not available in this API structure
       } : undefined
     });
   }
@@ -107,16 +107,16 @@ export class SyncTeamsUseCase {
     let updated = false;
 
     // Update logo if different
-    if (team.logoUrl !== teamData.team.logo) {
-      team.updateLogo(teamData.team.logo);
+    if (team.logoUrl !== teamData.crest) {
+      team.updateLogo(teamData.crest);
       updated = true;
     }
 
     // Update venue if different
     const newVenue = teamData.venue ? {
-      name: teamData.venue.name,
-      city: teamData.venue.city,
-      capacity: teamData.venue.capacity
+      name: teamData.venue,
+      city: teamData.venue, // The API only provides venue name
+      capacity: null // Not available in this API structure
     } : undefined;
 
     if (JSON.stringify(team.venue) !== JSON.stringify(newVenue)) {

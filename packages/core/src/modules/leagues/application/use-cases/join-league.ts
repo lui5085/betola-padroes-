@@ -46,6 +46,11 @@ export class JoinLeagueUseCase implements UseCase<JoinLeagueRequest, JoinLeagueR
         return Result.failure('League is full');
       }
       
+      // Check if league is private
+      if (league.isPrivate) {
+        return Result.failure('This league is private. You need an invitation to join.');
+      }
+      
       // Add user as member
       league.addMember(userId);
       

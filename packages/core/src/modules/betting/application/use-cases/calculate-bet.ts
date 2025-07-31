@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Result } from '@betola/core/shared/application/result';
+import { Result } from '../../../../shared/application/result';
 
 export interface CalculateBetRequest {
   selections: {
