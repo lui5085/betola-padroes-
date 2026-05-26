@@ -1,84 +1,108 @@
-# Turborepo starter
+# Betola — Apostas Esportivas entre Amigos
 
-This Turborepo starter is maintained by the Turborepo core team.
+Plataforma de apostas esportivas entre amigos focada no Brasileirão Serie A. Os usuários criam ligas privadas, apostam com moeda virtual (Betoletas) e competem entre si.
 
-## Using this example
+> **Fork** do projeto original [arthurbrit0/betola](https://github.com/arthurbrit0/betola) com melhorias na integração de APIs externas e correções de configuração.
 
-Run the following command:
+## Mudanças em relação ao projeto original
 
-```sh
-npx create-turbo@latest
-```
+### Integração com FlashScore4 API
+- Substituição completa da API-Football (api-sports.io) pela **FlashScore4 API** (RapidAPI)
+- Acesso à temporada atual do Brasileirão (sem limitação de plano free)
+- Suporte a **odds reais** de casas de apostas via `/matches/odds`
+- Partidas ao vivo, standings, fixtures e detalhes de partidas
+- Cache inteligente com rate limiting para respeitar limites da API
 
-## What's inside?
+### Correções de infraestrutura
+- Correção de conflito de porta do PostgreSQL (porta 5434 para evitar conflito com Postgres local)
+- Correção de paths do TypeScript (`@betola/core/shared/*`) que causavam `undefined` em runtime
+- Correção do `nest-cli.json` para apontar o `entryFile` correto no monorepo
+- Adição de `legacy-peer-deps` no `.npmrc` para resolver conflitos de versão do React
+- Correção do script `dev` da API para funcionar no Windows (aspas simples → compatível)
 
-This Turborepo includes the following packages/apps:
+### Correções de funcionalidade
+- Páginas de login e registro agora fazem chamadas reais à API (antes eram apenas visuais)
+- Variáveis de ambiente (`DATABASE_URL`, `JWT_SECRET`) adicionadas corretamente para a API
+- Limpeza de `dist` antigos que causavam conflito de módulos duplicados
 
-### Apps and Packages
+---
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Arquitetura
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
+Monorepo com Turborepo:
 
 ```
-cd my-turborepo
-pnpm build
+betola/
+├── apps/
+│   ├── api/          # NestJS — Backend REST API + WebSocket
+│   └── web/          # Next.js 14 — Frontend
+├── packages/
+│   ├── core/         # Domínio e casos de uso (Clean Architecture)
+│   ├── adapters/     # Implementações de repositórios e serviços externos
+│   └── ui/           # Componentes UI compartilhados (Radix + Tailwind)
+├── prisma/           # Schema do banco de dados
+└── docker-compose.yml
 ```
 
-### Develop
+## Pré-requisitos
 
-To develop all apps and packages, run the following command:
+- Node.js >= 18
+- npm 10+
+- Docker (para o PostgreSQL)
 
-```
-cd my-turborepo
-pnpm dev
-```
+## Como rodar
 
-### Remote Caching
+```bash
+# 1. Instalar dependências
+npm install
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+# 2. Subir o banco de dados
+docker compose up postgres -d
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
+# 3. Configurar variáveis de ambiente
+cp .env.sample .env
+cp apps/api/.env.sample apps/api/.env
+cp apps/web/.env.sample apps/web/.env
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+Edite o `.env` na raiz e adicione sua chave da FlashScore4 API (RapidAPI):
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
+```env
+FLASHSCORE_API_KEY="sua-chave-rapidapi"
 ```
 
-## Useful Links
+```bash
+# 4. Sincronizar banco de dados
+npx prisma generate
+npx prisma db push
 
-Learn more about the power of Turborepo:
+# 5. Rodar em modo desenvolvimento
+npm run dev
+```
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+O frontend roda em **http://localhost:3000** e a API em **http://localhost:3002**.
+
+## Variáveis de ambiente
+
+| Variável | Descrição |
+|----------|-----------|
+| `DATABASE_URL` | Connection string do PostgreSQL |
+| `JWT_SECRET` | Segredo para tokens JWT |
+| `FLASHSCORE_API_KEY` | Chave da FlashScore4 API (RapidAPI) |
+| `FLASHSCORE_BASE_URL` | URL base da API (`https://flashscore4.p.rapidapi.com/api/flashscore/v2`) |
+| `BRASILEIRAO_TOURNAMENT_TEMPLATE_ID` | ID do template do Brasileirão (`Yq4hUnzQ`) |
+| `BRASILEIRAO_SEASON_ID` | ID da temporada atual (`185`) |
+| `NEXT_PUBLIC_API_URL` | URL da API para o frontend (`http://localhost:3002`) |
+
+## APIs externas
+
+| API | Uso | Plano |
+|-----|-----|-------|
+| [FlashScore4](https://rapidapi.com/flashscore4) | Fixtures, standings, odds, live matches | RapidAPI (free tier disponível) |
+
+## Stack
+
+- **Backend:** NestJS, Prisma, PostgreSQL, JWT, WebSocket (Socket.io)
+- **Frontend:** Next.js 14, React 18, Tailwind CSS, Radix UI, SWR
+- **Monorepo:** Turborepo, npm workspaces
+- **Arquitetura:** Clean Architecture (core → adapters → api)
