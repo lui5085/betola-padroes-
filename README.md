@@ -106,3 +106,14 @@ O frontend roda em **http://localhost:3000** e a API em **http://localhost:3002*
 - **Frontend:** Next.js 14, React 18, Tailwind CSS, Radix UI, SWR
 - **Monorepo:** Turborepo, npm workspaces
 - **Arquitetura:** Clean Architecture (core → adapters → api)
+
+## Padrões de Projeto
+
+O projeto implementa 4 padrões de projeto documentados em [`docs/padroes/`](./docs/padroes/):
+
+| Padrão | Tipo | Descrição |
+|--------|------|-----------|
+| [Strategy](./docs/padroes/01-strategy.md) | Comportamental | Algoritmos intercambiáveis (hash, auth, email) sem alterar os casos de uso |
+| [Repository](./docs/padroes/02-repository.md) | Estrutural (DDD) | Abstrai a persistência — domínio não conhece banco de dados |
+| [Factory](./docs/padroes/03-factory.md) | Criacional | Encapsula criação de apostas simples/múltiplas em `BetFactory` |
+| [Decorator](./docs/padroes/04-decorator.md) | Estrutural | Adiciona logging e limite diário ao `PlaceBetUseCase` sem modificá-lo |
