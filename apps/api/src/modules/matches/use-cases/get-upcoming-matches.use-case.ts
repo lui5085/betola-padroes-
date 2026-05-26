@@ -249,61 +249,14 @@ export class GetUpcomingMatchesUseCase {
     
     // FlashScore fixtures endpoint returns upcoming matches.
     // They all have status 'TIMED' since they come from the fixtures (upcoming) endpoint.
-    const now = new Date();
-    const upcomingMatches = matches.filter(match => {
-      const matchDate = new Date(match.utcDate);
-      // Accept all matches with TIMED/SCHEDULED status, or future dates
-      return matchDate > now || match.status === 'TIMED' || match.status === 'SCHEDULED';
-    });
-    
-    if (upcomingMatches.length === 0) {
-      console.log('⚠️ No upcoming matches found, showing all available fixtures...');
-      // Show whatever we have
-      const availableMatches = matches.slice(0, limit);
-      console.log(`📅 Showing ${availableMatches.length} available matches`);
-      return this.formatUpcomingFixtures(availableMatches, season);
-    }
+    // Simply sort by date and return the next N matches.
+    const sortedMatches = [...matches].sort((a, b) => 
+      new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
+    );
 
-    // Sort by date
-    upcomingMatches.sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
-
-    // Group upcoming matches by matchday and find the next complete round
-    const matchdayGroups = new Map();
-    upcomingMatches.forEach(match => {
-      if (!matchdayGroups.has(match.matchday)) {
-        matchdayGroups.set(match.matchday, []);
-      }
-      matchdayGroups.get(match.matchday).push(match);
-    });
-
-    // Find the next matchday with the most matches (likely a complete round)
-    let nextMatchday = null;
-    let maxMatches = 0;
-    
-    console.log('🔍 Analyzing available matchdays:');
-    for (const [matchday, mdMatches] of matchdayGroups.entries()) {
-      console.log(`  Matchday ${matchday}: ${mdMatches.length} matches`);
-      
-      if (mdMatches.length > maxMatches && mdMatches.length >= 5) { // At least 5 matches in a round
-        maxMatches = mdMatches.length;
-        nextMatchday = matchday;
-      }
-    }
-
-    // If no good round found, fall back to the earliest matchday
-    if (!nextMatchday) {
-      nextMatchday = Math.min(...upcomingMatches.map(match => match.matchday));
-      console.log('⚠️ No complete round found, using earliest matchday:', nextMatchday);
-    } else {
-      console.log('✅ Best matchday found:', nextMatchday, 'with', maxMatches, 'matches');
-    }
-
-    const nextRoundMatches = matches.filter(match => 
-      match.matchday === nextMatchday
-    ).slice(0, limit);
-    
-    console.log(`📅 Found ${nextRoundMatches.length} matches for next round (matchday ${nextMatchday})`);
-    return this.formatUpcomingFixtures(nextRoundMatches, season);
+    const nextMatches = sortedMatches.slice(0, limit);
+    console.log(`📅 Returning next ${nextMatches.length} matches by date`);
+    return this.formatUpcomingFixtures(nextMatches, season);
   }
 
   private formatUpcomingFixtures(upcomingFixtures: any[], season: number): any[] {
