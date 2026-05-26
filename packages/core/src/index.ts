@@ -30,7 +30,10 @@ export * from './auth/use-cases/errors/user-not-found-error';
 
 // Betting module
 export * from './modules/betting/domain/entities/bet';
+export * from './modules/betting/domain/entities/single-bet';
+export * from './modules/betting/domain/entities/multiple-bet';
 export * from './modules/betting/domain/entities/bet-selection';
+export * from './modules/betting/domain/factories/bet-factory';
 export * from './modules/betting/domain/value-objects/bet-id';
 export * from './modules/betting/domain/value-objects/bet-amount';
 export * from './modules/betting/domain/value-objects/bet-status';
@@ -38,6 +41,9 @@ export * from './modules/betting/domain/value-objects/market-type';
 export * from './modules/betting/domain/value-objects/odds';
 export * from './modules/betting/domain/repositories/bets-repository';
 export * from './modules/betting/application/use-cases/place-bet';
+export * from './modules/betting/application/decorators/place-bet-decorator';
+export * from './modules/betting/application/decorators/logging-place-bet-decorator';
+export * from './modules/betting/application/decorators/daily-limit-place-bet-decorator';
 
 // Leagues module
 export * from './modules/leagues/domain/entities/league';

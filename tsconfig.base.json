@@ -6,7 +6,7 @@
       "baseUrl": ".",
       "paths": {
         "@betola/core": ["packages/core/src"],
-        "@betola/core/*": ["packages/core/src/*"]
+        "@betola/core/*": ["packages/core/src/*", "packages/core/*"]
       },
       "composite": true,
       "declaration": true,

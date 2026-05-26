@@ -14,6 +14,10 @@ import { SettleBetsUseCase } from '@betola/core/modules/betting/application/use-
 import { SyncMatchOddsUseCase } from './use-cases/sync-match-odds.use-case';
 import { GetMatchMarketsUseCase } from './use-cases/get-match-markets.use-case';
 
+// Decorators
+import { LoggingPlaceBetDecorator } from '@betola/core/modules/betting/application/decorators/logging-place-bet-decorator';
+import { DailyLimitPlaceBetDecorator } from '@betola/core/modules/betting/application/decorators/daily-limit-place-bet-decorator';
+
 // Services
 import { BettingService } from './services/betting.service';
 import { OddsUpdateService } from './services/odds-update.service';
@@ -76,8 +80,8 @@ import { FootballApiClient } from '@betola/adapters/matches/football-api-client'
     {
       provide: 'FootballApiService',
       useFactory: (configService: ConfigService) => new FootballApiClient({
-        baseUrl: configService.get<string>('FOOTBALL_API_BASE_URL') || 'https://api-football-v1.p.rapidapi.com/v3',
-        apiKey: configService.get<string>('FOOTBALL_API_KEY') || '',
+        baseUrl: configService.get<string>('FLASHSCORE_BASE_URL') || 'https://flashscore4.p.rapidapi.com/api/flashscore/v2',
+        apiKey: configService.get<string>('FLASHSCORE_API_KEY') || '',
         cacheTtl: {
           leagues: 86400, // 24 hours
           standings: 3600, // 1 hour
@@ -100,19 +104,20 @@ import { FootballApiClient } from '@betola/adapters/matches/football-api-client'
         const transactionalUseCase = {
           execute: (request: PlaceBetRequest) => {
             return prisma.$transaction(async (tx) => {
-              // Cria instâncias de repositórios com o cliente transacional
               const transactionalBetsRepo = new PrismaBetsRepository(tx as PrismaClient);
               const transactionalWalletsRepo = new PrismaWalletsRepository(tx as PrismaClient);
-
-              // Sobrescreve os repositórios no caso de uso com as versões transacionais
               (useCase as any).betsRepository = transactionalBetsRepo;
               (useCase as any).walletsRepository = transactionalWalletsRepo;
-              
               return useCase.execute(request);
             });
           }
         };
-        return transactionalUseCase;
+
+        // Decorator Pattern: envolve o use case transacional com logging e limite diário
+        return new DailyLimitPlaceBetDecorator(
+          new LoggingPlaceBetDecorator(transactionalUseCase),
+          betsRepo,
+        );
       },
       inject: [
         PrismaService,

@@ -27,4 +27,5 @@ export interface BetsRepository {
   findPendingByMatch(matchId: MatchId): Promise<Bet[]>;
   findPendingByMatchId(matchId: string): Promise<Bet[]>;
   update(bet: Bet): Promise<void>;
+  countByUserSince(userId: UserId, since: Date): Promise<number>;
 }

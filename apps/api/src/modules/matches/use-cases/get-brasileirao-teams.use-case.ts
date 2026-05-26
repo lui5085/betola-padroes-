@@ -23,7 +23,10 @@ export class GetBrasileraoTeamsUseCase {
     try {
       console.log('🏈 Fetching Brasileirão teams...');
       
-      const teamsResponse = await this.footballApiService.getTeams(2013, 2025);
+      // FlashScore uses tournament IDs instead of numeric league+season.
+      // The adapter handles the mapping internally, we pass the internal ID and season.
+      const seasonId = parseInt(process.env.BRASILEIRAO_SEASON_ID || '185');
+      const teamsResponse = await this.footballApiService.getTeams(71, seasonId);
       
       const teams: BrasileraoTeam[] = teamsResponse.teams.map(team => ({
         id: team.id,

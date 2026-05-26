@@ -19,7 +19,7 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@betola/core": ["../../packages/core/src"],
-      "@betola/core/*": ["../../packages/core/src/*"],
+      "@betola/core/*": ["../../packages/core/src/*", "../../packages/core/*"],
       "@betola/adapters": ["../../packages/adapters/src"],
       "@betola/adapters/*": ["../../packages/adapters/src/*"]
     }

@@ -46,8 +46,8 @@ import { PrismaMarketsRepository } from '@betola/adapters/betting/persistence/pr
     {
       provide: 'FootballApiService',
       useFactory: (configService: ConfigService) => new FootballApiClient({
-        baseUrl: configService.get<string>('FOOTBALL_API_BASE_URL') || 'https://api.football-data.org/v4',
-        apiKey: configService.get<string>('FOOTBALL_API_KEY') || '',
+        baseUrl: configService.get<string>('FLASHSCORE_BASE_URL') || 'https://flashscore4.p.rapidapi.com/api/flashscore/v2',
+        apiKey: configService.get<string>('FLASHSCORE_API_KEY') || '',
         cacheTtl: {
           leagues: 86400, // 24 hours
           standings: 3600, // 1 hour

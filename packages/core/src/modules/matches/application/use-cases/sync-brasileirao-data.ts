@@ -33,8 +33,8 @@ export class SyncBrasileraoDataUseCase {
       }
 
       const league = leagueResponse;
-      // Get current year for the season
-      const currentYear = new Date().getFullYear();
+      // Use season 2024 (free plan limit: 2022-2024)
+      const currentYear = 2024;
       
       // Look for current season, fallback to most recent season
       const availableSeason = league.seasons.find(s => s.startDate.includes(currentYear.toString())) || 

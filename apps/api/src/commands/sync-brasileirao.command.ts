@@ -27,7 +27,7 @@ export class SyncBrasileiraCommand extends CommandRunner {
       // Step 1: Sync teams
       this.logger.log('Syncing teams...');
       const teamsResult = await this.syncTeamsUseCase.execute({
-        season: 2025,
+        season: 2024,
         forceRefresh: true
       });
 

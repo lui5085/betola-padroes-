@@ -39,8 +39,8 @@ export class GetUpcomingMatchesUseCase {
           message: error.message,
           name: error.name,
           config: {
-            baseUrl: process.env.FOOTBALL_API_BASE_URL,
-            hasApiKey: !!process.env.FOOTBALL_API_KEY
+            baseUrl: process.env.FLASHSCORE_BASE_URL,
+            hasApiKey: !!process.env.FLASHSCORE_API_KEY
           }
         });
         throw new Error(`External API unavailable: ${error.message}`);
@@ -222,8 +222,8 @@ export class GetUpcomingMatchesUseCase {
 
       console.log(`📊 League found: ${leagueResult.name} (ID: ${leagueResult.id})`);
 
-      // Use current season (2025)
-      const currentSeason = 2025;
+      // Use the season ID from FlashScore (185 for current Brasileirão)
+      const currentSeason = leagueResult.currentSeason?.id || 185;
       
       console.log(`📅 Fetching fixtures for season ${currentSeason}...`);
       // Get fixtures for current season
@@ -233,19 +233,10 @@ export class GetUpcomingMatchesUseCase {
       );
 
       if (!fixturesResult.matches || fixturesResult.matches.length === 0) {
-        console.log('⚠️  No fixtures found for current season, trying 2024...');
-        // Fallback to 2024 season
-        const fixtures2024 = await this.footballApiService.getFixtures(leagueResult.id, 2024);
-        
-        if (!fixtures2024.matches || fixtures2024.matches.length === 0) {
-          throw new Error('No fixtures data available for 2024 or 2025 seasons');
-        }
-        
-        console.log(`📊 Found ${fixtures2024.matches.length} matches in 2024 season`);
-        return this.processFixtures(fixtures2024.matches, limit, 2024);
+        throw new Error('No fixtures data available from FlashScore API');
       }
 
-      console.log(`📊 Found ${fixturesResult.matches.length} matches in ${currentSeason} season`);
+      console.log(`📊 Found ${fixturesResult.matches.length} matches in season ${currentSeason}`);
       return this.processFixtures(fixturesResult.matches, limit, currentSeason);
     } catch (error) {
       console.error('💥 Error in fetchFromApi:', error.message);
@@ -256,21 +247,25 @@ export class GetUpcomingMatchesUseCase {
   private processFixtures(matches: any[], limit: number, season: number): any[] {
     console.log(`🔍 Processing ${matches.length} fixtures...`);
     
-    // Find the next matchday by looking for upcoming matches (include TIMED status)
+    // FlashScore fixtures endpoint returns upcoming matches.
+    // They all have status 'TIMED' since they come from the fixtures (upcoming) endpoint.
     const now = new Date();
-    const upcomingMatches = matches.filter(match => 
-      new Date(match.utcDate) > now && (match.status === 'SCHEDULED' || match.status === 'TIMED')
-    );
+    const upcomingMatches = matches.filter(match => {
+      const matchDate = new Date(match.utcDate);
+      // Accept all matches with TIMED/SCHEDULED status, or future dates
+      return matchDate > now || match.status === 'TIMED' || match.status === 'SCHEDULED';
+    });
     
     if (upcomingMatches.length === 0) {
-      console.log('⚠️ No upcoming matches found, using fallback logic...');
-      // Fallback to original logic if no upcoming matches
-      const upcomingFixtures = matches
-        .filter(match => ['SCHEDULED', 'LIVE', 'IN_PLAY', 'PAUSED'].includes(match.status))
-        .slice(0, limit);
-      console.log(`📅 Found ${upcomingFixtures.length} matches using fallback`);
-      return this.formatUpcomingFixtures(upcomingFixtures, season);
+      console.log('⚠️ No upcoming matches found, showing all available fixtures...');
+      // Show whatever we have
+      const availableMatches = matches.slice(0, limit);
+      console.log(`📅 Showing ${availableMatches.length} available matches`);
+      return this.formatUpcomingFixtures(availableMatches, season);
     }
+
+    // Sort by date
+    upcomingMatches.sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
 
     // Group upcoming matches by matchday and find the next complete round
     const matchdayGroups = new Map();
@@ -286,13 +281,11 @@ export class GetUpcomingMatchesUseCase {
     let maxMatches = 0;
     
     console.log('🔍 Analyzing available matchdays:');
-    for (const [matchday, matches] of matchdayGroups.entries()) {
-      const timedMatches = matches.filter(m => m.status === 'TIMED').length;
-      const scheduledMatches = matches.filter(m => m.status === 'SCHEDULED').length;
-      console.log(`  Matchday ${matchday}: ${timedMatches} TIMED + ${scheduledMatches} SCHEDULED = ${matches.length} total`);
+    for (const [matchday, mdMatches] of matchdayGroups.entries()) {
+      console.log(`  Matchday ${matchday}: ${mdMatches.length} matches`);
       
-      if (timedMatches > maxMatches && timedMatches >= 5) { // At least 5 matches in a round
-        maxMatches = timedMatches;
+      if (mdMatches.length > maxMatches && mdMatches.length >= 5) { // At least 5 matches in a round
+        maxMatches = mdMatches.length;
         nextMatchday = matchday;
       }
     }
@@ -302,11 +295,11 @@ export class GetUpcomingMatchesUseCase {
       nextMatchday = Math.min(...upcomingMatches.map(match => match.matchday));
       console.log('⚠️ No complete round found, using earliest matchday:', nextMatchday);
     } else {
-      console.log('✅ Best matchday found:', nextMatchday, 'with', maxMatches, 'TIMED matches');
+      console.log('✅ Best matchday found:', nextMatchday, 'with', maxMatches, 'matches');
     }
 
     const nextRoundMatches = matches.filter(match => 
-      match.matchday === nextMatchday && (match.status === 'SCHEDULED' || match.status === 'TIMED')
+      match.matchday === nextMatchday
     ).slice(0, limit);
     
     console.log(`📅 Found ${nextRoundMatches.length} matches for next round (matchday ${nextMatchday})`);

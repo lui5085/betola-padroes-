@@ -6,8 +6,8 @@ import { Odds } from '../../domain/value-objects/odds';
 import { MarketTypeVO } from '../../domain/value-objects/market-type';
 import { UserId } from '../../../auth/domain/value-objects/user-id';
 import { MatchId } from '../../../matches/domain/value-objects/match-id';
-import { Bet } from '../../domain/entities/bet';
 import { BetSelection } from '../../domain/entities/bet-selection';
+import { BetFactory } from '../../domain/factories/bet-factory';
 import { BetsRepository } from '../../domain/repositories/bets-repository';
 import { WalletsRepository } from '../../../wallet/domain/repositories/wallets-repository';
 import { MatchesRepository } from '../../../matches/domain/repositories/matches-repository';
@@ -63,7 +63,7 @@ export class PlaceBetUseCase implements UseCase<PlaceBetRequest, PlaceBetRespons
         odds: new Odds(s.odds)
       }));
 
-      const bet = new Bet({ id: betId, userId, selections, amount: betAmount });
+      const bet = BetFactory.create({ id: betId, userId, selections, amount: betAmount });
       
       wallet.debit(betAmount);
 

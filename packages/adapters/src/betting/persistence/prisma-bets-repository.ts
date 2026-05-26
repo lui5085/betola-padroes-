@@ -1,7 +1,7 @@
 // packages/adapters/src/betting/persistence/prisma-bets-repository.ts
 
 import { PrismaClient } from '@prisma/client';
-import { 
+import {
   BetsRepository,
   Bet,
   BetId,
@@ -16,7 +16,8 @@ import {
   MarketTypeVO,
   MarketType,
   MatchId,
-  BetSelection
+  BetSelection,
+  BetFactory,
 } from '@betola/core';
 
 export class PrismaBetsRepository implements BetsRepository {
@@ -232,7 +233,7 @@ export class PrismaBetsRepository implements BetsRepository {
       })
     );
 
-    return new Bet({
+    return BetFactory.create({
       id: new BetId(bet.id),
       userId: new UserId(bet.userId),
       selections,
@@ -240,7 +241,16 @@ export class PrismaBetsRepository implements BetsRepository {
       status: new BetStatusVO(bet.status as BetStatus),
       settledAt: bet.settledAt ? new DateTime(bet.settledAt) : undefined,
       createdAt: new DateTime(bet.createdAt),
-      updatedAt: new DateTime(bet.updatedAt)
+      updatedAt: new DateTime(bet.updatedAt),
+    });
+  }
+
+  async countByUserSince(userId: UserId, since: Date): Promise<number> {
+    return this.prisma.bet.count({
+      where: {
+        userId: userId.value,
+        createdAt: { gte: since },
+      },
     });
   }
 }

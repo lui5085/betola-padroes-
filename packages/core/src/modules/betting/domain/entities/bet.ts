@@ -19,7 +19,8 @@ export interface BetProps {
   updatedAt?: DateTime;
 }
 
-export class Bet extends BaseEntity<BetId> {
+export abstract class Bet extends BaseEntity<BetId> {
+  abstract get type(): 'SINGLE' | 'MULTIPLE';
   private readonly _userId: UserId;
   private readonly _selections: BetSelection[];
   private readonly _amount: BetAmount;

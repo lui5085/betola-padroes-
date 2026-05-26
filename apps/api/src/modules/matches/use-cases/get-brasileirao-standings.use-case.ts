@@ -47,7 +47,10 @@ export class GetBrasileraoStandingsUseCase {
     try {
       console.log('🏆 Fetching Brasileirão standings...');
       
-      const standingsResponse = await this.footballApiService.getStandings(2013, 2025);
+      // FlashScore uses tournament IDs instead of numeric league+season.
+      // The adapter handles the mapping internally, we pass the internal ID and season.
+      const seasonId = parseInt(process.env.BRASILEIRAO_SEASON_ID || '185');
+      const standingsResponse = await this.footballApiService.getStandings(71, seasonId);
       
       // Get the main standings table (usually the first one)
       const mainStandings = standingsResponse.standings.find(s => s.type === 'TOTAL');

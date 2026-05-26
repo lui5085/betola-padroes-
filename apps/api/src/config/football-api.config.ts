@@ -1,11 +1,11 @@
 import { FootballApiConfig } from '@betola/core/modules/matches/domain/services/football-api-service';
 
 export const createFootballApiConfig = (): FootballApiConfig => {
-  const apiKey = process.env.FOOTBALL_API_KEY;
-  const baseUrl = process.env.FOOTBALL_API_BASE_URL || 'https://api.football-data.org/v4';
+  const apiKey = process.env.FLASHSCORE_API_KEY;
+  const baseUrl = process.env.FLASHSCORE_BASE_URL || 'https://flashscore4.p.rapidapi.com/api/flashscore/v2';
 
   if (!apiKey) {
-    throw new Error('FOOTBALL_API_KEY environment variable is required');
+    throw new Error('FLASHSCORE_API_KEY environment variable is required');
   }
 
   return {

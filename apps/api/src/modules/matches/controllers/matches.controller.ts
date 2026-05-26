@@ -355,8 +355,8 @@ export class MatchesController {
   async testApi() {
     try {
       console.log('Environment variables:', {
-        FOOTBALL_API_KEY: process.env.FOOTBALL_API_KEY,
-        FOOTBALL_API_BASE_URL: process.env.FOOTBALL_API_BASE_URL
+        FLASHSCORE_API_KEY: process.env.FLASHSCORE_API_KEY ? 'presente' : 'ausente',
+        FLASHSCORE_BASE_URL: process.env.FLASHSCORE_BASE_URL
       });
       
       const result = await this.footballApiService.getBrasileirao();
@@ -365,14 +365,14 @@ export class MatchesController {
         data: result
       };
     } catch (error) {
-      console.error('Football API Error:', error);
+      console.error('FlashScore API Error:', error);
       return {
         success: false,
         error: error.message,
         stack: error.stack,
         config: {
-          apiKey: process.env.FOOTBALL_API_KEY ? 'presente' : 'ausente',
-          baseUrl: process.env.FOOTBALL_API_BASE_URL
+          apiKey: process.env.FLASHSCORE_API_KEY ? 'presente' : 'ausente',
+          baseUrl: process.env.FLASHSCORE_BASE_URL
         }
       };
     }
