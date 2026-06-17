@@ -12,6 +12,9 @@ import { BetsRepository } from '../../domain/repositories/bets-repository';
 import { WalletsRepository } from '../../../wallet/domain/repositories/wallets-repository';
 import { MatchesRepository } from '../../../matches/domain/repositories/matches-repository';
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { EventBus } from '../../../../shared/domain/events/event-bus';
+import { BetPlacedEvent } from '../../../../shared/domain/events/domain-events';
+import { BetValidationChain } from '../validators/bet-validation-chain';
 
 export interface PlaceBetRequest {
   userId: string;
@@ -35,23 +38,29 @@ export class PlaceBetUseCase implements UseCase<PlaceBetRequest, PlaceBetRespons
     private readonly betsRepository: BetsRepository,
     private readonly walletsRepository: WalletsRepository,
     private readonly matchesRepository: MatchesRepository,
+    private readonly eventBus?: EventBus,
   ) {}
 
   async execute(request: PlaceBetRequest): Promise<Result<PlaceBetResponse>> {
     try {
+      // Chain of Responsibility: validate bet through the chain
+      const validationChain = new BetValidationChain(this.walletsRepository, this.matchesRepository);
+      const validationResult = await validationChain.validate({
+        userId: request.userId,
+        amount: request.amount,
+        selections: request.selections,
+      });
+
+      if (validationResult.isFailure()) {
+        return Result.failure(validationResult.error);
+      }
+
       const userId = UserId.fromString(request.userId);
       const betAmount = new BetAmount(request.amount);
 
       const wallet = await this.walletsRepository.findByUserId(userId);
-      if (!wallet || !wallet.canAfford(betAmount)) {
-        return Result.failure('Wallet not found or insufficient balance');
-      }
-
-      for (const s of request.selections) {
-        const match = await this.matchesRepository.findById(MatchId.fromString(s.matchId));
-        if (!match || new Date(match.kickoffTime.value) <= new Date()) {
-          return Result.failure(`Match ${s.matchId} is not available for betting.`);
-        }
+      if (!wallet) {
+        return Result.failure('Wallet not found');
       }
 
       const betId = BetId.create();
@@ -70,6 +79,18 @@ export class PlaceBetUseCase implements UseCase<PlaceBetRequest, PlaceBetRespons
       // A camada da API será responsável pela transação
       await this.betsRepository.save(bet);
       await this.walletsRepository.update(wallet);
+
+      // Observer Pattern: emit domain event
+      if (this.eventBus) {
+        this.eventBus.publish(new BetPlacedEvent({
+          betId: bet.id.value,
+          userId: request.userId,
+          amount: request.amount,
+          totalOdds: bet.totalOdds.value,
+          potentialWin: bet.potentialWin,
+          selectionsCount: request.selections.length,
+        }));
+      }
 
       return Result.success({
         betId: bet.id.value,
