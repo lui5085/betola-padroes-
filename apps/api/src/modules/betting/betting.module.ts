@@ -98,9 +98,10 @@ import { FootballApiClient } from '@betola/adapters/matches/football-api-client'
         betsRepo: BetsRepository,
         walletsRepo: WalletsRepository,
         matchesRepo: MatchesRepository,
+        eventBus: any,
       ) => {
         // Wrapper que executa o caso de uso dentro de uma transação
-        const useCase = new PlaceBetUseCase(betsRepo, walletsRepo, matchesRepo);
+        const useCase = new PlaceBetUseCase(betsRepo, walletsRepo, matchesRepo, eventBus);
         const transactionalUseCase = {
           execute: (request: PlaceBetRequest) => {
             return prisma.$transaction(async (tx) => {
@@ -124,6 +125,7 @@ import { FootballApiClient } from '@betola/adapters/matches/football-api-client'
         'BetsRepository',
         'WalletsRepository',
         'MatchesRepository',
+        'EventBus',
       ],
     },
   ],

@@ -1,11 +1,11 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
-  Query, 
-  UseGuards, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
   NotFoundException,
   BadRequestException,
   Inject,
@@ -28,6 +28,9 @@ import { SyncMatchOddsUseCase } from '../use-cases/sync-match-odds.use-case';
 import { GetMatchMarketsUseCase } from '../use-cases/get-match-markets.use-case';
 import { MarketsRepository } from '@betola/core/modules/betting/domain/repositories/markets-repository';
 import { MatchId } from '@betola/core/modules/matches/domain/value-objects/match-id';
+import { EventBus } from '@betola/core/shared/domain/events/event-bus';
+import { BetSettledEvent } from '@betola/core/shared/domain/events/domain-events';
+import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 @Controller('bets')
 @UseGuards(JwtAuthGuard)
@@ -41,7 +44,9 @@ export class BettingController {
     private readonly settleBetsUseCase: SettleBetsUseCase,
     private readonly syncMatchOddsUseCase: SyncMatchOddsUseCase,
     private readonly getMatchMarketsUseCase: GetMatchMarketsUseCase,
-    @Inject('MarketsRepository') private readonly marketsRepository: MarketsRepository
+    @Inject('MarketsRepository') private readonly marketsRepository: MarketsRepository,
+    @Inject('EventBus') private readonly eventBus: EventBus,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post()
@@ -206,6 +211,53 @@ export class BettingController {
         settledCount: 0
       };
     }
+  }
+
+  @Post(':betId/demo-settle')
+  @ApiOperation({ summary: '[DEMO] Force-settle a bet and fire BetSettledEvent via Observer pattern' })
+  async demoSettle(
+    @Param('betId') betId: string,
+    @Body() body: { isWon: boolean },
+  ): Promise<{ message: string; betId: string; isWon: boolean; observersNotified: number }> {
+    const bet = await this.prisma.bet.findUnique({ where: { id: betId } });
+
+    if (!bet) {
+      throw new NotFoundException(`Bet ${betId} not found`);
+    }
+
+    if (bet.status !== 'PENDING') {
+      throw new BadRequestException(`Bet ${betId} is already settled (status: ${bet.status})`);
+    }
+
+    const payout = body.isWon ? bet.potentialReturn : 0;
+
+    await this.prisma.bet.update({
+      where: { id: betId },
+      data: { status: body.isWon ? 'WON' : 'LOST', settledAt: new Date() },
+    });
+
+    if (body.isWon && payout > 0) {
+      await this.prisma.wallet.update({
+        where: { userId: bet.userId },
+        data: { balance: { increment: payout } },
+      });
+    }
+
+    // Observer Pattern: publica evento — observers reagem automaticamente
+    this.eventBus.publish(new BetSettledEvent({
+      betId: bet.id,
+      userId: bet.userId,
+      isWon: body.isWon,
+      amount: bet.amount,
+      potentialWin: payout,
+    }));
+
+    return {
+      message: 'BetSettledEvent published — observers notified',
+      betId: bet.id,
+      isWon: body.isWon,
+      observersNotified: 2,
+    };
   }
 
   @Get('stats/summary')

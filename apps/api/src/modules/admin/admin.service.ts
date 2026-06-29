@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { NotificationsHelper } from '../notifications/notifications.helper';
+import { EventBus } from '@betola/core/shared/domain/events/event-bus';
+import { BetSettledEvent } from '@betola/core/shared/domain/events/domain-events';
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
-    private notificationsHelper: NotificationsHelper,
+    @Inject('EventBus') private readonly eventBus: EventBus,
   ) {}
 
   async getPendingBets(options: { page: number; limit: number }) {
@@ -116,14 +117,14 @@ export class AdminService {
       });
     }
 
-    // Criar notificação
-    await this.notificationsHelper.notifyBetSettled({
-      userId: bet.userId,
+    // Observer Pattern: publica BetSettledEvent — NotificationObserver e LeagueStatsObserver reagem
+    this.eventBus.publish(new BetSettledEvent({
       betId: data.betId,
-      status: data.status,
+      userId: bet.userId,
+      isWon: data.status === 'WON',
       amount: bet.amount,
-      payout: data.status === 'WON' ? payout : undefined,
-    });
+      potentialWin: payout,
+    }));
 
     return {
       success: true,

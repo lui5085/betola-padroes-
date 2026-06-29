@@ -16,6 +16,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { EventBusModule } from './shared/modules/event-bus.module';
 import { SyncBrasileiraCommand } from './commands/sync-brasileirao.command';
 
 // Use cases for commands
@@ -43,6 +44,7 @@ import { createFootballApiConfig } from './config/football-api.config';
       limit: 10,  // 10 requests per minute
     }]),
     CommandRunnerModule,
+    EventBusModule,
     AuthModule,
     BettingModule,
     MatchesModule,

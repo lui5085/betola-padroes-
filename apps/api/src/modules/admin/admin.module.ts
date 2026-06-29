@@ -3,20 +3,19 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { NotificationsModule } from '../notifications/notifications.module';
-import { 
+import {
   SyncBrasileraoDataUseCase,
   FootballApiService,
   MatchesRepository
 } from '@betola/core';
-import { 
+import {
   FootballApiClient,
   PrismaMatchesRepository
 } from '@betola/adapters';
 import { createFootballApiConfig } from '../../config/football-api.config';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [],
   controllers: [AdminController],
   providers: [
     AdminService, 
